@@ -30,7 +30,7 @@ func main() {
 	baseURL := fmt.Sprintf("https://%s.api.dragonchain.com", creds.GetDragonchainId())
 	client := dragonchain.NewClient(ctx, creds, baseURL, httpClient)
 
-	heapList, err := client.GetSCHeap("matterPayoutContract", "60_payout_data")
+	heapList, err := client.GetSCHeap("", "")
 	if err != nil {
 		fmt.Println("client.ListSCHeap returned error: ", err)
 		return
