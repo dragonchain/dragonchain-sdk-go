@@ -319,7 +319,6 @@ func (client *Client) GetSCHeap(scId, key string) (io.Reader, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, NewDCRequestError(resp)
