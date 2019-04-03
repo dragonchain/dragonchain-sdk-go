@@ -38,6 +38,6 @@ type Transaction struct {
 }
 
 type GetSmartContractHeap struct {
-	SCName  string `json:"sc_name"`
-	Key     string `json:"key"`
+	SCName string `json:"sc_name"`
+	Key    string `json:"key"`
 }

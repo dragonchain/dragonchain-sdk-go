@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
-	"github.com/dragonchain-inc/dragonchain"
+	"github.com/dragonchain-inc/dragonchain-sdk-go"
 )
 
 var (
@@ -22,17 +23,24 @@ func main() {
 
 	creds, err := dragonchain.NewCredentials(dcId, apiKey, apiKeyId, dragonchain.HashSHA256)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("dragonchain.NewCredentials returned error: ", err)
+		return
 	}
 
 	baseURL := fmt.Sprintf("https://%s.api.dragonchain.com", creds.GetDragonchainId())
 	client := dragonchain.NewClient(ctx, creds, baseURL, httpClient)
 
-	msg, err := client.Status()
+	heapList, err := client.GetSCHeap("matterPayoutContract", "60_payout_data")
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("client.ListSCHeap returned error: ", err)
 		return
 	}
 
-	fmt.Println(msg)
+	healListJson, err := json.Marshal(heapList)
+	if err != nil {
+		fmt.Println("json.Marshal returned error: ", err)
+		return
+	}
+
+	fmt.Println(string(healListJson))
 }

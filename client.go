@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 )
 
@@ -290,4 +294,79 @@ func (client *Client) QueryTransactions(query *Query) ([]*Transaction, error) {
 	}
 
 	return respData.Results, nil
+}
+
+func (client *Client) GetSCHeap(scId, key string) (io.Reader, error) {
+	if len(scId) == 0 {
+		scId = os.Getenv("SMART_CONTRACT_ID")
+	}
+
+	if len(key) == 0 {
+		return nil, errors.New("key can not be empty")
+	}
+
+	path := "/get"
+	uri := fmt.Sprintf("%s%s/%s/%s", client.apiBaseUrl, path, scId, key)
+
+	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	if err != nil {
+		return nil, err
+	}
+
+	client.setHeaders(req, "GET", req.URL.RequestURI(), "application/json", "")
+
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewDCRequestError(resp)
+	}
+
+	return resp.Body, nil
+}
+
+func (client *Client) ListSCHeap(scId, folder string) ([]string, error) {
+	if len(scId) == 0 {
+		scId = os.Getenv("SMART_CONTRACT_ID")
+	}
+
+	path := "/list"
+	uri := fmt.Sprintf("%s%s/%s/", client.apiBaseUrl, path, scId)
+
+	if len(folder) > 0 {
+		if strings.HasSuffix(folder, "/") {
+			return nil, errors.New("folder can not end with '/'")
+		}
+		uri = fmt.Sprintf("%s%s", uri, folder)
+	}
+
+	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	if err != nil {
+		return nil, err
+	}
+
+	client.setHeaders(req, "GET", req.URL.RequestURI(), "application/json", "")
+
+	resp, err := client.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, NewDCRequestError(resp)
+	}
+
+	decoder := json.NewDecoder(resp.Body)
+
+	var respData []string
+	err = decoder.Decode(&respData)
+	if err != nil {
+		return nil, err
+	}
+
+	return respData, nil
 }
