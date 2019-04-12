@@ -197,11 +197,6 @@ func (creds *Credentials) createHmac(secret, message string) []byte {
 	return h.Sum(nil)
 }
 
-// CompareHmac returns true if the hmac provided matches the current chain's signature, else false.
-func (creds *Credentials) CompareHmac(hmacBytes []byte, secret, message string) bool {
-	return hmac.Equal(hmacBytes, creds.createHmac(secret, message))
-}
-
 // GetDragonchainID returns the current chain's ID.
 func (creds *Credentials) GetDragonchainID() string {
 	return creds.dcID
