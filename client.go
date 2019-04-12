@@ -9,6 +9,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// Package dragonchain is used to interact programmatically with dragonchains.
 package dragonchain
 
 import (
