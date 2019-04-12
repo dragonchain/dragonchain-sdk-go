@@ -22,20 +22,15 @@ import (
 	"github.com/go-ini/ini"
 )
 
-var (
-	// ConfigFilePath points to the location of the Configuration file
-	// Default on windows '%LOCALAPPDATA%\dragonchain\credentials'
-	// Default on linux '$HOME/.dragonchain/credentials'
-	// This may be overridden before creating Credentials
-	ConfigFilePath = ""
+// ConfigFilePath points to the location of the Configuration file
+// Default on windows '%LOCALAPPDATA%\dragonchain\credentials'
+// Default on linux '$HOME/.dragonchain/credentials'
+// This may be overridden before creating Credentials
+var ConfigFilePath = ""
+var configs *Configuration
 
-	configs *Configuration
-)
-
-var (
-	// ErrNoConfigurationFileFound is returned if no config was found in ConfigFilePath.
-	ErrNoConfigurationFileFound = errors.New("no Configuration file found")
-)
+// ErrNoConfigurationFileFound is returned if no config was found in ConfigFilePath.
+var ErrNoConfigurationFileFound = errors.New("no Configuration file found")
 
 func init() {
 	if runtime.GOOS == "windows" {

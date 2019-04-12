@@ -25,10 +25,8 @@ import (
 	"time"
 )
 
-const (
-	// MaxBulkPutSize is the configurable limit of how many txn can be included in a bulk operation.
-	MaxBulkPutSize = 250
-)
+// MaxBulkPutSize is the configurable limit of how many txn can be included in a bulk operation.
+const MaxBulkPutSize = 250
 
 // TODO: Move these into a query response file? Don't belong here, not sure where they belong.
 type postTransactionResponse struct {

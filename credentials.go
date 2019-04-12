@@ -25,13 +25,11 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-var (
-	// ErrUnsupportedHashAlgo is thrown when an unsupported hash method is provided.
-	ErrUnsupportedHashAlgo = errors.New("hash method not supported")
+// ErrUnsupportedHashAlgo is thrown when an unsupported hash method is provided.
+var ErrUnsupportedHashAlgo = errors.New("hash method not supported")
 
-	// ErrNoCredentials is thrown if no credentials file can be found.
-	ErrNoCredentials = errors.New("no credentials found")
-)
+// ErrNoCredentials is thrown if no credentials file can be found.
+var ErrNoCredentials = errors.New("no credentials found")
 
 // Supported hash functions
 const (
