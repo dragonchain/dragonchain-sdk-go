@@ -50,3 +50,17 @@ type GetSmartContractHeap struct {
 	SCName string `json:"sc_name"`
 	Key    string `json:"key"`
 }
+
+// TransactionType defines the properties of a valid Dragonchain transaction type.
+type TransactionType struct {
+	Version       string                 `json:"version"`
+	Type          string                 `json:"txn_type"`
+	CustomIndexes []CustomIndexStructure `json:"custom_indexes"`
+	IsContract    bool                   `json:"is_contract"`
+}
+
+// CustomIndexStructure defines the valid format of custom indexes on a transaction type.
+type CustomIndexStructure struct {
+	Key  string `json:"key"`
+	Path string `json:"path"`
+}
