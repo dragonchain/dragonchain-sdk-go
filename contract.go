@@ -24,3 +24,27 @@ type ContractConfiguration struct {
 	Cron           string                 `json:"cron"`
 	Auth           string                 `json:"auth"`
 }
+
+// Contract defines the structure of a deployed smart contract.
+type Contract struct {
+	TxnType         string                 `json:"txn_type"`
+	ContractID      string                 `json:"id"`
+	Status          ContractStatus         `json:"status"`
+	Image           string                 `json:"image"`
+	AuthKeyID       string                 `json:"auth_key_id"`
+	ImageDigest     string                 `json:"image_digest"`
+	Cmd             string                 `json:"cmd"`
+	Args            []string               `json:"args"`
+	Env             map[string]interface{} `json:"env"`
+	ExistingSecrets []string               `json:"existing_secrets"`
+	Cron            string                 `json:"cron"`
+	Seconds         string                 `json:"seconds"`
+	ExecutionOrder  string                 `json:"execution_order"`
+}
+
+// ContractStatus defines the status object for contracts.
+type ContractStatus struct {
+	State     string `json:"state"`
+	Msg       string `json:"msg"`
+	Timestamp string `json:"timestamp"`
+}

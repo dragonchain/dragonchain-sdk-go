@@ -11,6 +11,14 @@
 
 package dragonchain
 
+// Verification is a representation of the verification object for a block.
+type Verification struct {
+	L2 []Block `json:"2,omitempty"`
+	L3 []Block `json:"3,omitempty"`
+	L4 []Block `json:"4,omitempty"`
+	L5 []Block `json:"5,omitempty"`
+}
+
 // L1Verification is a representation of an L1 block verified by an L2 chain.
 type L1Verification struct {
 	BlockID       string `json:"block_id"`
@@ -36,4 +44,13 @@ type L3Verification struct {
 	L3BlockID string `json:"l3_block_id"`
 	L3Proof   string `json:"l3_proof"`
 	Valid     bool   `json:"valid"`
+}
+
+// L4Verification is a representation of an L4 block verified by an L4 chain.
+type L4Verification struct {
+	L1ChainID string `json:"l1_dc_id"`
+	L1BlockID string `json:"l1_block_id"`
+	L4ChainID string `json:"l4_dc_id"`
+	L4BlockID string `json:"l4_block_id"`
+	L4Proof   string `json:"l4_proof`
 }

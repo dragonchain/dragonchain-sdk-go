@@ -44,7 +44,7 @@ fmt.Println("Block: ${call.response}");
 #### QueryTransactions
 
 ```golang
-searchResult = client.QueryTransactions(Query.NewQuery("tag=MyAwesomeTransactionTag"))
+searchResult := client.QueryTransactions(Query.NewQuery("tag=MyAwesomeTransactionTag"))
 ```
 
 #### OverrideCredentials

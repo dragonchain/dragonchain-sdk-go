@@ -15,102 +15,39 @@ package dragonchain
 
 // Block defines the structure of a finalized block.
 type Block struct {
-	Version string `json:"version"`
-	DCRN    string `json:"dcrn"`
-	Header  BlockHeader
-	Proof   BlockProof
+	Version       string `json:"version"`
+	DCRN          string `json:"dcrn"`
+	Header        BlockHeader
+	Proof         BlockProof
+	Transactions  []Transaction    `json:"transactions,omitempty"`   // L1 only
+	Validation    L1Verification   `json:"validation,omitempty"`     // L2 only
+	L2Validations []L2Verification `json:"l2-validations,omitempty"` // L3 only
+	L3Validations []L3Verification `json:"l3-validations,omitempty"` // L4 only
+	L4Blocks      []string         `json:"l4-blocks,omitempty"`      // L5 only
 }
 
 // BlockHeader defines the structure of a block's header
 type BlockHeader struct {
-	ChainID   string `json:"dc_id"`
-	DDSS      string `json:"current_ddss"`
-	Level     int    `json:"level"`
-	BlockID   string `json:"block_id"`
-	Timestamp string `json:"timestamp"`
-	PrevProof string `json:"prev_proof"`
+	DcID       string `json:"dc_id"`
+	DDSS       string `json:"current_ddss"`
+	Level      int    `json:"level"`
+	BlockID    string `json:"block_id"`
+	Timestamp  string `json:"timestamp"`
+	PrevProof  string `json:"prev_proof"`
+	PreviousID string `json:"prev_id"`
+	// L4 only headers
+	L1BlockID string `json:"l1_block_id,omitempty"`
+	L1ChainID string `json:"l1_dc_id,omitempty"`
+	L1Proof   string `json:"l1_proof,omitempty"`
 }
 
 // BlockProof defines the structure of a signature proof.
 type BlockProof struct {
 	Scheme string `json:"scheme"`
-	Proof  string `json:"proof"`
-	Nonce  int    `json:"nonce"` // Used for PoW chains.
-}
-
-// L1 block structs
-
-// L1Header specifies additional header properties for L1 chains.
-type L1Header struct {
-	*BlockHeader
-	PreviousID string `json:"prev_id"`
-}
-
-// L1Block specifies additional block properties for L1 chains.
-type L1Block struct {
-	*Block
-	Transactions []Transaction
-}
-
-// L2 block structs
-
-// L2Header specifies additional header properties for L2 chains.
-type L2Header struct {
-	*BlockHeader
-}
-
-// L2Block specifies additional block properties for L2 chains.
-type L2Block struct {
-	*Block
-	Validation L1Verification
-}
-
-// L3 block structs
-
-// L3Header specifies additional header properties for L3 chains.
-type L3Header struct {
-	*BlockHeader
-}
-
-// L3Block specifies additional block properties for L3 chains.
-type L3Block struct {
-	*Block
-	L2Validations []L2Verification `json:"l2-validations"`
-}
-
-// L4 block structs
-
-// L4Header specifies additional header properties for L4 chains.
-type L4Header struct {
-	*BlockHeader
-	L1BlockID string `json:"l1_block_id"`
-	L1ChainID string `json:"l1_dc_id"`
-	L1Proof   string `json:"l1_proof"`
-}
-
-// L4Block specifies additional block properties for L4 chains.
-type L4Block struct {
-	*Block
-	L3Validations []L3Verification `json:"l3-validations"`
-}
-
-// L5 block structs
-
-// L5Header specifies additional header properties for L5 chains.
-type L5Header struct {
-	*BlockHeader
-}
-
-// L5Block specifies additional block properties for L5 chains.
-type L5Block struct {
-	*Block
-	L4Blocks []string `json:"l4-blocks"`
-}
-
-// L5Proof specifies additional proof properties for L5 chains.
-type L5Proof struct {
-	*Proof
-	BlockLastSentAt string   `json:"block_last_sent_at"`
-	TxnHash         []string `json:"transaction_hash"`
-	Network         string   `json:"network"`
+	Proof  string `json:"proof,omitempty"`
+	Nonce  int    `json:"nonce,omitempty"` // Used for PoW chains.
+	// L5 only proofs
+	BlockLastSentAt string   `json:"block_last_sent_at,omitempty"`
+	TxnHash         []string `json:"transaction_hash,omitempty"`
+	Network         string   `json:"network,omitempty"`
 }

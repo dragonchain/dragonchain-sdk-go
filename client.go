@@ -29,22 +29,11 @@ import (
 // MaxBulkPutSize is the configurable limit of how many txn can be included in a bulk operation.
 const MaxBulkPutSize = 250
 
-// TODO: Move these into a query response file? Don't belong here, not sure where they belong.
-type postTransactionResponse struct {
-	TransactionID string `json:"transaction_id"`
-}
-
-type postBulkTransactionResponse struct {
-	TransactionIDs []string           `json:"201"`
-	Failed         []*PostTransaction `json:"400"`
-}
-
-type searchTransactionResponse struct {
-	Results []*Transaction `json:"results"`
-}
-
-type searchBlockResponse struct {
-	Results []*Block `json:"results"`
+// Response defines the standard response all chains will use.
+type Response struct {
+	OK       bool        `json:"ok"`
+	Status   int         `json:"status"`
+	Response interface{} `json:"response"`
 }
 
 // Client defines the structure of the DragonchainSDK client.
@@ -99,132 +88,184 @@ func (client *Client) GetSecret(secretName, scID string) (string, error) {
 
 	path := fmt.Sprintf("/var/openfaas/secrets/sc-%s-%s", scID, secretName)
 	file, err := os.Open(path)
+	defer file.Close()
 	if err == nil {
-		b, readErr := ioutil.ReadAll(file)
-		return string(b), readErr
+		return parseSecret(file)
 	}
 	return "", err
 }
 
+// parseSecret does the actual work of reading the secret. The functions are separated for testability.
+func parseSecret(reader io.Reader) (string, error) {
+	b, readErr := ioutil.ReadAll(reader)
+	return string(b), readErr
+}
+
 // GetStatus returns the chain's status, such as Active or Updating.
-func (client *Client) GetStatus() (string, error) {
+func (client *Client) GetStatus() (*Response, error) {
 	path := "/status"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 
 	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	resp, err := client.performRequest(req)
-	msg, err := ioutil.ReadAll(resp.Body)
-	return string(msg), err
+	defer resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+	decoder := json.NewDecoder(resp.Body)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
+	if err != nil {
+		return nil, err
+	}
+	return &chainResp, err
 }
 
 // QueryContracts returns a list of matching contracts on the chain.
-func (client *Client) QueryContracts(query *Query) (string, error) {
+func (client *Client) QueryContracts(query *Query) (*Response, error) {
 	path := "/contract"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
-	q := req.URL.Query()
-	q.Add("q", query.Query)
-	if query.Sort != "" {
-		q.Add("sort", query.Sort)
-	}
-	if query.Limit != 0 {
-		q.Add("limit", string(query.Limit))
-	}
-	if query.Offset != 0 {
-		q.Add("offset", string(query.Offset))
-	}
+	buildQuery(req, query)
 	resp, err := client.performRequest(req)
-	msg, err := ioutil.ReadAll(resp.Body)
-	return string(msg), err
+	defer resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+	decoder := json.NewDecoder(resp.Body)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
+	if err != nil {
+		return nil, err
+	}
+	return &chainResp, err
 }
 
 // GetSmartContract returns details on a smart contract by ID or txnType.
 // If both contractID and txnType are provided, contractID is used.
-// TODO: dry this method out. Ask David.
-func (client *Client) GetSmartContract(contractID, txnType string) (string, error) {
-	if contractID != "" {
+func (client *Client) GetSmartContract(contractID, txnType string) (*Response, error) {
+	var req *http.Request
+	var err error
+	if contractID == "" && txnType == "" {
+		return nil, errors.New("invalid parameters: you must provide one of contractID or txnType")
+	} else if contractID != "" {
 		path := "/contract"
 		uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, contractID)
-		req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
-		if err != nil {
-			return "", err
-		}
-		resp, err := client.performRequest(req)
-		msg, err := ioutil.ReadAll(resp.Body)
-		return string(msg), err
+		req, err = http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
 	} else if txnType != "" {
 		path := "/contract/txn_type"
 		uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, txnType)
-		req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
-		if err != nil {
-			return "", err
-		}
-		resp, err := client.performRequest(req)
-		msg, err := ioutil.ReadAll(resp.Body)
-		return string(msg), err
+		req, err = http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+		fmt.Println(uri)
 	}
-	return "", errors.New("invalid parameters: you must provide one of contractID or txnType")
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.performRequest(req)
+	defer resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+	decoder := json.NewDecoder(resp.Body)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
+	if err != nil {
+		return nil, err
+	}
+	// Handle conversion of Response from an interface{} to Contract for the user.
+	raw, _ := json.Marshal(chainResp.Response)
+	var contract Contract
+	json.Unmarshal(raw, &contract)
+	chainResp.Response = contract
+	return &chainResp, err
 }
 
 // PostContract creates a new smart contract on the chain.
-func (client *Client) PostContract(contract *ContractConfiguration) (string, error) {
+func (client *Client) PostContract(contract *ContractConfiguration) (*Response, error) {
 	path := "/contract"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 	b, err := json.Marshal(contract)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(b))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	resp, err := client.performRequest(req)
-	msg, err := ioutil.ReadAll(resp.Body)
-	return string(msg), err
+	defer resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+	decoder := json.NewDecoder(resp.Body)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
+	if err != nil {
+		return nil, err
+	}
+	return &chainResp, err
 }
 
 // UpdateContract updates an existing contract with a new configuration.
 // Configuration details that aren't provided will not be changed.
-func (client *Client) UpdateContract(contract *ContractConfiguration) (string, error) {
+func (client *Client) UpdateContract(contract *ContractConfiguration) (*Response, error) {
 	path := "/contract"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 	b, err := json.Marshal(contract)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	req, err := http.NewRequest("PUT", uri, bytes.NewBuffer(b))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	resp, err := client.performRequest(req)
-	msg, err := ioutil.ReadAll(resp.Body)
-	return string(msg), err
+	defer resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+	decoder := json.NewDecoder(resp.Body)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
+	if err != nil {
+		return nil, err
+	}
+	return &chainResp, err
 }
 
 // DeleteContract removes a contract from the chain.
-func (client *Client) DeleteContract(contractID string) (string, error) {
+func (client *Client) DeleteContract(contractID string) (*Response, error) {
 	path := "/contract"
 	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, contractID)
 	req, err := http.NewRequest("DELETE", uri, bytes.NewBuffer([]byte("")))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	resp, err := client.performRequest(req)
-	msg, err := ioutil.ReadAll(resp.Body)
-	return string(msg), err
+	defer resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+	decoder := json.NewDecoder(resp.Body)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
+	if err != nil {
+		return nil, err
+	}
+	return &chainResp, err
 }
 
 // GetTransaction gets a transaction from the chain by id.
-func (client *Client) GetTransaction(txnID string) (*Transaction, error) {
+func (client *Client) GetTransaction(txnID string) (*Response, error) {
 	path := "/transaction"
 	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, txnID)
 
@@ -233,76 +274,86 @@ func (client *Client) GetTransaction(txnID string) (*Transaction, error) {
 		return nil, err
 	}
 	resp, err := client.performRequest(req)
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
-
 	decoder := json.NewDecoder(resp.Body)
-
-	var respData Transaction
-	err = decoder.Decode(&respData)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
 	if err != nil {
 		return nil, err
 	}
-
-	return &respData, nil
+	// Handle conversion of Response from an interface{} to Transaction for the user.
+	raw, _ := json.Marshal(chainResp.Response)
+	var txn Transaction
+	json.Unmarshal(raw, &txn)
+	chainResp.Response = txn
+	return &chainResp, err
 }
 
 // PostTransaction creates a transaction on the chain.
-func (client *Client) PostTransaction(txn *PostTransaction) (string, error) {
+func (client *Client) PostTransaction(txn *PostTransaction) (*Response, error) {
 	path := "/transaction"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 
 	b, err := json.Marshal(txn)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(b))
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	resp, err := client.performRequest(req)
-	msg, err := ioutil.ReadAll(resp.Body)
-	return string(msg), err
+	defer resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+	decoder := json.NewDecoder(resp.Body)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
+	if err != nil {
+		return nil, err
+	}
+	return &chainResp, err
 }
 
 // PostTransactionBulk sends many transactions to a chain in a single HTTP request.
-func (client *Client) PostTransactionBulk(txn []*PostTransaction) ([]string, []*PostTransaction, error) {
+func (client *Client) PostTransactionBulk(txn []*PostTransaction) (*Response, error) {
 	path := "/transaction_bulk"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 
 	if len(txn) > MaxBulkPutSize {
-		return nil, nil, ErrMaxBulkSizeExceeded
+		return nil, ErrMaxBulkSizeExceeded
 	}
 
 	txnBytes, err := json.Marshal(txn)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(txnBytes))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	resp, err := client.performRequest(req)
+	defer resp.Body.Close()
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
 	decoder := json.NewDecoder(resp.Body)
-
-	var respData postBulkTransactionResponse
-	err = decoder.Decode(&respData)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
-	return respData.TransactionIDs, respData.Failed, nil
+	return &chainResp, err
 }
 
 // QueryBlocks gets all blocks matching the given query.
-func (client *Client) QueryBlocks(query *Query) ([]*Block, error) {
+func (client *Client) QueryBlocks(query *Query) (*Response, error) {
 	path := "/block"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 
@@ -312,23 +363,21 @@ func (client *Client) QueryBlocks(query *Query) ([]*Block, error) {
 	}
 	buildQuery(req, query)
 	resp, err := client.performRequest(req)
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
-
 	decoder := json.NewDecoder(resp.Body)
-
-	var respData searchBlockResponse
-	err = decoder.Decode(&respData)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
 	if err != nil {
 		return nil, err
 	}
-
-	return respData.Results, nil
+	return &chainResp, err
 }
 
 // GetBlock returns a block by ID.
-func (client *Client) GetBlock(blockID string) (*Block, error) {
+func (client *Client) GetBlock(blockID string) (*Response, error) {
 	path := "/block"
 	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, blockID)
 
@@ -337,18 +386,26 @@ func (client *Client) GetBlock(blockID string) (*Block, error) {
 		return nil, err
 	}
 	resp, err := client.performRequest(req)
-	decoder := json.NewDecoder(resp.Body)
-	var block Block
-	err = decoder.Decode(&block)
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
-
-	return &block, nil
+	decoder := json.NewDecoder(resp.Body)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
+	if err != nil {
+		return nil, err
+	}
+	// Handle conversion of Response from an interface{} to Block for the user.
+	raw, _ := json.Marshal(chainResp.Response)
+	var block Block
+	json.Unmarshal(raw, &block)
+	chainResp.Response = block
+	return &chainResp, err
 }
 
 // GetVerification returns a block's verification at a specific level of DragonNet.
-func (client *Client) GetVerification(blockID string, level int) (*L1Verification, error) {
+func (client *Client) GetVerification(blockID string, level int) (*Response, error) {
 	path := "/verifications"
 	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, blockID)
 
@@ -359,20 +416,36 @@ func (client *Client) GetVerification(blockID string, level int) (*L1Verificatio
 	if level > 0 {
 		q := req.URL.Query()
 		q.Add("level", string(level))
+		req.URL.RawQuery = q.Encode()
 	}
 	resp, err := client.performRequest(req)
-	decoder := json.NewDecoder(resp.Body)
-	var verification L1Verification
-	err = decoder.Decode(&verification)
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
-
-	return &verification, nil
+	decoder := json.NewDecoder(resp.Body)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
+	if err != nil {
+		return nil, err
+	}
+	// Handle conversion of Response from an interface{} to Verification for the user.
+	if level > 0 {
+		raw, _ := json.Marshal(chainResp.Response)
+		var verificationBlocks []Block
+		json.Unmarshal(raw, &verificationBlocks)
+		chainResp.Response = verificationBlocks
+	} else {
+		raw, _ := json.Marshal(chainResp.Response)
+		var verification Verification
+		json.Unmarshal(raw, &verification)
+		chainResp.Response = verification
+	}
+	return &chainResp, err
 }
 
 // QueryTransactions gets all transactions matching the given query on the chain.
-func (client *Client) QueryTransactions(query *Query) ([]*Transaction, error) {
+func (client *Client) QueryTransactions(query *Query) (*Response, error) {
 	path := "/transaction"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 
@@ -383,24 +456,22 @@ func (client *Client) QueryTransactions(query *Query) ([]*Transaction, error) {
 
 	buildQuery(req, query)
 	resp, err := client.performRequest(req)
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
-
 	decoder := json.NewDecoder(resp.Body)
-
-	var respData searchTransactionResponse
-	err = decoder.Decode(&respData)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
 	if err != nil {
 		return nil, err
 	}
-
-	return respData.Results, nil
+	return &chainResp, err
 }
 
 // GetSCHeap returns a specific key from a smart contract's heap.
 // If SCName is not provided, the SDK will try to pull it from the environment.
-func (client *Client) GetSCHeap(scID, key string) (io.Reader, error) {
+func (client *Client) GetSCHeap(scID, key string) (*Response, error) {
 	if len(scID) == 0 {
 		scID = os.Getenv("SMART_CONTRACT_ID")
 	}
@@ -417,16 +488,22 @@ func (client *Client) GetSCHeap(scID, key string) (io.Reader, error) {
 		return nil, err
 	}
 	resp, err := client.performRequest(req)
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
-
-	return resp.Body, nil
+	decoder := json.NewDecoder(resp.Body)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
+	if err != nil {
+		return nil, err
+	}
+	return &chainResp, err
 }
 
 // ListSCHeap lists out all keys from a smart contract's heap.
 // Optionally, folder can be provided to only list a subset of keys.
-func (client *Client) ListSCHeap(scID, folder string) ([]string, error) {
+func (client *Client) ListSCHeap(scID, folder string) (*Response, error) {
 	if len(scID) == 0 {
 		scID = os.Getenv("SMART_CONTRACT_ID")
 	}
@@ -446,23 +523,21 @@ func (client *Client) ListSCHeap(scID, folder string) ([]string, error) {
 		return nil, err
 	}
 	resp, err := client.performRequest(req)
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
-
 	decoder := json.NewDecoder(resp.Body)
-
-	var respData []string
-	err = decoder.Decode(&respData)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
 	if err != nil {
 		return nil, err
 	}
-
-	return respData, nil
+	return &chainResp, err
 }
 
 // GetTransactionType returns a transaction type on chain by its name.
-func (client *Client) GetTransactionType(transactionType string) (*TransactionType, error) {
+func (client *Client) GetTransactionType(transactionType string) (*Response, error) {
 	path := "/transaction-type"
 	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, transactionType)
 
@@ -471,21 +546,26 @@ func (client *Client) GetTransactionType(transactionType string) (*TransactionTy
 		return nil, err
 	}
 	resp, err := client.performRequest(req)
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
 	decoder := json.NewDecoder(resp.Body)
-	var respData TransactionType
-	err = decoder.Decode(&respData)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
 	if err != nil {
 		return nil, err
 	}
-
-	return &respData, nil
+	// Handle conversion of Response from an interface{} to TransactionType for the user.
+	raw, _ := json.Marshal(chainResp.Response)
+	var txnType TransactionType
+	json.Unmarshal(raw, &txnType)
+	chainResp.Response = txnType
+	return &chainResp, err
 }
 
 // ListTransactionTypes lists out all registered transaction types for a chain.
-func (client *Client) ListTransactionTypes() ([]TransactionType, error) {
+func (client *Client) ListTransactionTypes() (*Response, error) {
 	path := "/transaction-types"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 
@@ -494,21 +574,21 @@ func (client *Client) ListTransactionTypes() ([]TransactionType, error) {
 		return nil, err
 	}
 	resp, err := client.performRequest(req)
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
 	decoder := json.NewDecoder(resp.Body)
-	var respData []TransactionType
-	err = decoder.Decode(&respData)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
 	if err != nil {
 		return nil, err
 	}
-
-	return respData, nil
+	return &chainResp, err
 }
 
 // UpdateTransactionType updates a given transaction type.
-func (client *Client) UpdateTransactionType(transactionType string, customIndexes []CustomIndexStructure) (*http.Response, error) {
+func (client *Client) UpdateTransactionType(transactionType string, customIndexes []CustomIndexStructure) (*Response, error) {
 	path := "/transaction-type"
 	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, transactionType)
 	var params TransactionType
@@ -525,14 +605,21 @@ func (client *Client) UpdateTransactionType(transactionType string, customIndexe
 		return nil, err
 	}
 	resp, err := client.performRequest(req)
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
-	return resp, nil
+	decoder := json.NewDecoder(resp.Body)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
+	if err != nil {
+		return nil, err
+	}
+	return &chainResp, err
 }
 
 // RegisterTransactionType creates a new transaction type.
-func (client *Client) RegisterTransactionType(transactionType string, customIndexes []CustomIndexStructure) (*http.Response, error) {
+func (client *Client) RegisterTransactionType(transactionType string, customIndexes []CustomIndexStructure) (*Response, error) {
 	path := "/transaction-type"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 	var params TransactionType
@@ -550,26 +637,40 @@ func (client *Client) RegisterTransactionType(transactionType string, customInde
 		return nil, err
 	}
 	resp, err := client.performRequest(req)
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
-	return resp, nil
+	decoder := json.NewDecoder(resp.Body)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
+	if err != nil {
+		return nil, err
+	}
+	return &chainResp, err
 }
 
 // DeleteTransactionType removes the specified transaction type. It will not affect transactions that have already been processed.
-func (client *Client) DeleteTransactionType(transactionType string) (*http.Response, error) {
+func (client *Client) DeleteTransactionType(transactionType string) (*Response, error) {
 	path := "/transaction-type"
 	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, transactionType)
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	req, err := http.NewRequest("DELETE", uri, bytes.NewBuffer([]byte("")))
 	if err != nil {
 		return nil, err
 	}
 	resp, err := client.performRequest(req)
+	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
-	return resp, nil
+	decoder := json.NewDecoder(resp.Body)
+	var chainResp Response
+	err = decoder.Decode(&chainResp)
+	if err != nil {
+		return nil, err
+	}
+	return &chainResp, err
 }
 
 // setHeaders sets the http headers of a request to the chain with proper authorization.
@@ -597,7 +698,7 @@ func (client *Client) performRequest(req *http.Request) (*http.Response, error) 
 		return resp, err
 	}
 
-	if resp.StatusCode != http.StatusCreated {
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return resp, NewRequestError(resp)
 	}
 	return resp, err
