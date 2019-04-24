@@ -52,5 +52,5 @@ type L4Verification struct {
 	L1BlockID string `json:"l1_block_id"`
 	L4ChainID string `json:"l4_dc_id"`
 	L4BlockID string `json:"l4_block_id"`
-	L4Proof   string `json:"l4_proof`
+	L4Proof   string `json:"l4_proof"`
 }

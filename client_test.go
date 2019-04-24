@@ -13,15 +13,40 @@ package dragonchain
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"strings"
 	"testing"
 
 	"gotest.tools/assert"
 )
+
+type clientMock struct {
+}
+
+func (c clientMock) Do(req *http.Request) (*http.Response, error) {
+	return nil, errors.New("this is a test error in Client.Do")
+}
+func (c clientMock) CloseIdleConnections() {
+	return
+}
+func (c clientMock) Get(url string) (resp *http.Response, err error) {
+	return nil, errors.New("this is a test error in Client.Get")
+}
+func (c clientMock) Head(url string) (resp *http.Response, err error) {
+	return nil, errors.New("this is a test error in Client.Head")
+}
+func (c clientMock) Post(url, contentType string, body io.Reader) (resp *http.Response, err error) {
+	return nil, errors.New("this is a test error in Client.Post")
+}
+func (c clientMock) PostForm(url string, data url.Values) (resp *http.Response, err error) {
+	return nil, errors.New("this is a test error in Client.PostForm")
+}
 
 var testServer *httptest.Server
 
@@ -127,6 +152,15 @@ func TestGetStatus(t *testing.T) {
 	assert.DeepEqual(t, resp.Response, expected)
 }
 
+func TestGetStatusRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	resp, err := client.GetStatus()
+	assert.Error(t, err, "this is a test error in Client.Get")
+	assert.Assert(t, resp == nil)
+}
+
 func TestQueryContracts(t *testing.T) {
 	query, _ := NewQuery("banana", "fruit", 10, 10)
 	_, client := setUp()
@@ -153,6 +187,16 @@ func TestQueryContracts(t *testing.T) {
 	assert.DeepEqual(t, contracts[0], expected)
 }
 
+func TestQueryContractsRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	query, _ := NewQuery("banana", "fruit", 10, 10)
+	resp, err := client.QueryContracts(query)
+	assert.Error(t, err, "this is a test error in Client.Do")
+	assert.Assert(t, resp == nil)
+}
+
 func TestGetSmartContractByID(t *testing.T) {
 	_, client := setUp()
 	resp, err := client.GetSmartContract("banana", "")
@@ -171,6 +215,15 @@ func TestGetSmartContractByID(t *testing.T) {
 		ExecutionOrder: "serial",
 	}
 	assert.DeepEqual(t, resp.Response, expected)
+}
+
+func TestGetSmartContractRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	resp, err := client.GetSmartContract("banana", "")
+	assert.Error(t, err, "this is a test error in Client.Get")
+	assert.Assert(t, resp == nil)
 }
 
 func TestGetSmartContractByType(t *testing.T) {
@@ -226,6 +279,24 @@ func TestPostContract(t *testing.T) {
 	assert.DeepEqual(t, contractResp, expected)
 }
 
+func TestPostContractRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	contract := &ContractConfiguration{
+		TxnType:        "banana",
+		ExecutionOrder: "serial",
+		Image:          "dragonchain/banana:1.0.0-dev",
+		Cmd:            "go",
+		Args:           []string{"run"},
+		Seconds:        59,
+		Auth:           "bananaauth",
+	}
+	resp, err := client.PostContract(contract)
+	assert.Error(t, err, "this is a test error in Client.Post")
+	assert.Assert(t, resp == nil)
+}
+
 func TestUpdateContract(t *testing.T) {
 	_, client := setUp()
 	contract := &ContractConfiguration{
@@ -254,12 +325,39 @@ func TestUpdateContract(t *testing.T) {
 	// ToDo: Load up the contract and verify the update succeeded? Is that an integration test?
 }
 
+func TestUpdateContractRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	contract := &ContractConfiguration{
+		TxnType:        "banana2",
+		ExecutionOrder: "serial",
+		Image:          "dragonchain/banana:2.0.0-dev",
+		Cmd:            "go",
+		Args:           []string{"run"},
+		Seconds:        59,
+		Auth:           "bananaauth",
+	}
+	resp, err := client.UpdateContract(contract)
+	assert.Error(t, err, "this is a test error in Client.Do")
+	assert.Assert(t, resp == nil)
+}
+
 func TestDeleteContract(t *testing.T) {
 	_, client := setUp()
 	resp, err := client.DeleteContract("bananaID")
 	assert.NilError(t, err, "DeleteContract should not return an error")
 	success := resp.Response.(map[string]interface{})["success"]
 	assert.Assert(t, success != nil)
+}
+
+func TestDeleteContractRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	resp, err := client.DeleteContract("banana")
+	assert.Error(t, err, "this is a test error in Client.Do")
+	assert.Assert(t, resp == nil)
 }
 
 func TestGetTransaction(t *testing.T) {
@@ -287,6 +385,15 @@ func TestGetTransaction(t *testing.T) {
 	assert.DeepEqual(t, txn, expected)
 }
 
+func TestGetTransactionRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	resp, err := client.GetTransaction("banana-txn")
+	assert.Error(t, err, "this is a test error in Client.Get")
+	assert.Assert(t, resp == nil)
+}
+
 func TestPostTransaction(t *testing.T) {
 	_, client := setUp()
 	txn := &PostTransaction{
@@ -298,6 +405,20 @@ func TestPostTransaction(t *testing.T) {
 	resp, err := client.PostTransaction(txn)
 	assert.NilError(t, err, "PostTransaction should not return an error")
 	assert.DeepEqual(t, resp.Response, map[string]interface{}{"transaction_id": "banana"})
+}
+
+func TestPostTransactionRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	txn := &PostTransaction{
+		Version: "latest",
+		TxnType: "banana",
+		Payload: make(map[string]interface{}),
+	}
+	resp, err := client.PostTransaction(txn)
+	assert.Error(t, err, "this is a test error in Client.Post")
+	assert.Assert(t, resp == nil)
 }
 
 func TestPostTransactionBulk(t *testing.T) {
@@ -314,6 +435,24 @@ func TestPostTransactionBulk(t *testing.T) {
 	resp, err := client.PostTransactionBulk(txn)
 	assert.NilError(t, err, "PostTransactionBulk should not return an error")
 	assert.DeepEqual(t, resp.Response, map[string]interface{}{"201": []interface{}{"banana"}, "400": []interface{}{"apple"}})
+}
+
+func TestPostTransactionBulkRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	txn := []*PostTransaction{
+		&PostTransaction{
+			Version: "latest",
+			TxnType: "banana",
+		}, &PostTransaction{
+			Version: "latest",
+			TxnType: "banana",
+		},
+	}
+	resp, err := client.PostTransactionBulk(txn)
+	assert.Error(t, err, "this is a test error in Client.Post")
+	assert.Assert(t, resp == nil)
 }
 
 func TestQueryBlocks(t *testing.T) {
@@ -348,6 +487,16 @@ func TestQueryBlocks(t *testing.T) {
 	assert.DeepEqual(t, blocks[0], expected[0])
 }
 
+func TestQueryBlocksRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	query, _ := NewQuery("banana", "fruit", 10, 10)
+	resp, err := client.QueryBlocks(query)
+	assert.Error(t, err, "this is a test error in Client.Do")
+	assert.Assert(t, resp == nil)
+}
+
 func TestGetBlock(t *testing.T) {
 	_, client := setUp()
 	resp, err := client.GetBlock("banana")
@@ -373,6 +522,15 @@ func TestGetBlock(t *testing.T) {
 	assert.DeepEqual(t, block, expected)
 }
 
+func TestGetBlockRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	resp, err := client.GetBlock("banana-block")
+	assert.Error(t, err, "this is a test error in Client.Get")
+	assert.Assert(t, resp == nil)
+}
+
 func TestGetVerification(t *testing.T) {
 	_, client := setUp()
 	resp, err := client.GetVerification("banana", 0)
@@ -393,6 +551,15 @@ func TestGetVerification(t *testing.T) {
 		},
 	}
 	assert.DeepEqual(t, verification, expected)
+}
+
+func TestGetVerificationRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	resp, err := client.GetVerification("banana-verification", 0)
+	assert.Error(t, err, "this is a test error in Client.Do")
+	assert.Assert(t, resp == nil)
 }
 
 func TestGetVerificationAtLevel(t *testing.T) {
@@ -443,6 +610,16 @@ func TestQueryTransactions(t *testing.T) {
 	assert.DeepEqual(t, txn[0], expected)
 }
 
+func TestQueryTransactionsRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	query, _ := NewQuery("banana", "fruit", 10, 10)
+	resp, err := client.QueryTransactions(query)
+	assert.Error(t, err, "this is a test error in Client.Do")
+	assert.Assert(t, resp == nil)
+}
+
 func TestGetSCHeap(t *testing.T) {
 	_, client := setUp()
 	resp, err := client.GetSCHeap("bananaContract", "apple")
@@ -450,11 +627,29 @@ func TestGetSCHeap(t *testing.T) {
 	assert.Equal(t, resp.Response, "banana")
 }
 
+func TestGetSCHeapRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	resp, err := client.GetSCHeap("bananaContract", "apple")
+	assert.Error(t, err, "this is a test error in Client.Get")
+	assert.Assert(t, resp == nil)
+}
+
 func TestListSCHeap(t *testing.T) {
 	_, client := setUp()
 	resp, err := client.ListSCHeap("bananaContract", "apple")
 	assert.NilError(t, err, "ListSCHeap should not return an error")
 	assert.Equal(t, resp.Response, "banana")
+}
+
+func TestListSCHeapRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	resp, err := client.ListSCHeap("bananaContract", "apple")
+	assert.Error(t, err, "this is a test error in Client.Get")
+	assert.Assert(t, resp == nil)
 }
 
 func TestGetTransactionType(t *testing.T) {
@@ -467,6 +662,15 @@ func TestGetTransactionType(t *testing.T) {
 		CustomIndexes: []CustomIndexStructure{},
 	}
 	assert.DeepEqual(t, resp.Response, expected)
+}
+
+func TestGetTransactionTypeRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	resp, err := client.GetTransactionType("banana")
+	assert.Error(t, err, "this is a test error in Client.Get")
+	assert.Assert(t, resp == nil)
 }
 
 func TestListTransactionTypes(t *testing.T) {
@@ -486,6 +690,15 @@ func TestListTransactionTypes(t *testing.T) {
 	assert.DeepEqual(t, txnTypes[0], expected)
 }
 
+func TestListTransactionTypesRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	resp, err := client.ListTransactionTypes()
+	assert.Error(t, err, "this is a test error in Client.Get")
+	assert.Assert(t, resp == nil)
+}
+
 func TestUpdateTransactionType(t *testing.T) {
 	_, client := setUp()
 	indexes := []CustomIndexStructure{
@@ -499,6 +712,21 @@ func TestUpdateTransactionType(t *testing.T) {
 	expected := make(map[string]interface{})
 	expected["success"] = true
 	assert.DeepEqual(t, resp.Response, expected)
+}
+
+func TestUpdateTransactionTypeRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	indexes := []CustomIndexStructure{
+		CustomIndexStructure{
+			Key:  "skeleton_key",
+			Path: "any/door",
+		},
+	}
+	resp, err := client.UpdateTransactionType("banana", indexes)
+	assert.Error(t, err, "this is a test error in Client.Do")
+	assert.Assert(t, resp == nil)
 }
 
 func TestRegisterTransactionType(t *testing.T) {
@@ -516,6 +744,21 @@ func TestRegisterTransactionType(t *testing.T) {
 	assert.DeepEqual(t, resp.Response, expected)
 }
 
+func TestRegisterTransactionTypeRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	indexes := []CustomIndexStructure{
+		CustomIndexStructure{
+			Key:  "skeleton_key",
+			Path: "any/door",
+		},
+	}
+	resp, err := client.RegisterTransactionType("banana", indexes)
+	assert.Error(t, err, "this is a test error in Client.Post")
+	assert.Assert(t, resp == nil)
+}
+
 func TestDeleteTransactionType(t *testing.T) {
 	_, client := setUp()
 	resp, err := client.DeleteTransactionType("banana")
@@ -523,4 +766,13 @@ func TestDeleteTransactionType(t *testing.T) {
 	expected := make(map[string]interface{})
 	expected["success"] = true
 	assert.DeepEqual(t, resp.Response, expected)
+}
+
+func TestDeleteTransactionTypeRequestFails(t *testing.T) {
+	_, client := setUp()
+	fakeHTTPClient := clientMock{}
+	client.OverrideCredentials(nil, "", fakeHTTPClient)
+	resp, err := client.DeleteTransactionType("banana")
+	assert.Error(t, err, "this is a test error in Client.Do")
+	assert.Assert(t, resp == nil)
 }

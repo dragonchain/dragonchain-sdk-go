@@ -21,6 +21,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 	"time"
@@ -41,15 +42,24 @@ type Client struct {
 	creds      Authenticator
 	apiBaseURL string
 
-	httpClient *http.Client
+	httpClient httpClient
 	ctx        context.Context
+}
+
+type httpClient interface {
+	Do(req *http.Request) (*http.Response, error)
+	CloseIdleConnections()
+	Get(url string) (resp *http.Response, err error)
+	Head(url string) (resp *http.Response, err error)
+	Post(url, contentType string, body io.Reader) (resp *http.Response, err error)
+	PostForm(url string, data url.Values) (resp *http.Response, err error)
 }
 
 // NewClient creates a new instance of client. By default, it does not generate usable credentials.
 // Accepts Authenticator credentials created using dragonchain.NewCredentials.
 // apiBaseUrl is optional and for use when interacting with chains outside of the managed service.
 // httpClient is optional if you wish to designate custom headers for requests.
-func NewClient(creds Authenticator, apiBaseURL string, httpClient *http.Client) *Client {
+func NewClient(creds Authenticator, apiBaseURL string, httpClient httpClient) *Client {
 	if apiBaseURL == "" {
 		apiBaseURL = fmt.Sprintf("https://%s.api.dragonchain.com", creds.GetDragonchainID())
 	}
@@ -66,7 +76,7 @@ func NewClient(creds Authenticator, apiBaseURL string, httpClient *http.Client) 
 }
 
 // OverrideCredentials changes the creds, apiBaseURL, and httpClient of an existing DragonchainSDK Client.
-func (client *Client) OverrideCredentials(creds Authenticator, apiBaseURL string, httpClient *http.Client) {
+func (client *Client) OverrideCredentials(creds Authenticator, apiBaseURL string, httpClient httpClient) {
 	if creds != nil {
 		client.creds = creds
 		client.apiBaseURL = fmt.Sprintf("https://%s.api.dragonchain.com", creds.GetDragonchainID())
@@ -131,10 +141,10 @@ func (client *Client) QueryContracts(query *Query) (*Response, error) {
 
 	buildQuery(req, query)
 	resp, err := client.performRequest(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -157,9 +167,6 @@ func (client *Client) GetSmartContract(contractID, txnType string) (*Response, e
 	} else if txnType != "" {
 		path := "/contract/txn_type"
 		uri = fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, txnType)
-	}
-	if err != nil {
-		return nil, err
 	}
 	resp, err := client.httpClient.Get(uri)
 	if err != nil {
@@ -218,10 +225,10 @@ func (client *Client) UpdateContract(contract *ContractConfiguration) (*Response
 		return nil, err
 	}
 	resp, err := client.performRequest(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -240,10 +247,10 @@ func (client *Client) DeleteContract(contractID string) (*Response, error) {
 		return nil, err
 	}
 	resp, err := client.performRequest(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -340,10 +347,10 @@ func (client *Client) QueryBlocks(query *Query) (*Response, error) {
 	}
 	buildQuery(req, query)
 	resp, err := client.performRequest(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -392,10 +399,10 @@ func (client *Client) GetVerification(blockID string, level int) (*Response, err
 		req.URL.RawQuery = q.Encode()
 	}
 	resp, err := client.performRequest(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -429,10 +436,10 @@ func (client *Client) QueryTransactions(query *Query) (*Response, error) {
 
 	buildQuery(req, query)
 	resp, err := client.performRequest(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -562,10 +569,10 @@ func (client *Client) UpdateTransactionType(transactionType string, customIndexe
 		return nil, err
 	}
 	resp, err := client.performRequest(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -613,10 +620,10 @@ func (client *Client) DeleteTransactionType(transactionType string) (*Response, 
 		return nil, err
 	}
 	resp, err := client.performRequest(req)
-	defer resp.Body.Close()
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
