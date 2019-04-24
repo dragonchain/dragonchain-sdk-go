@@ -106,15 +106,11 @@ func (client *Client) GetStatus() (*Response, error) {
 	path := "/status"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	resp, err := client.httpClient.Get(uri)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
 	defer resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -151,28 +147,25 @@ func (client *Client) QueryContracts(query *Query) (*Response, error) {
 // GetSmartContract returns details on a smart contract by ID or txnType.
 // If both contractID and txnType are provided, contractID is used.
 func (client *Client) GetSmartContract(contractID, txnType string) (*Response, error) {
-	var req *http.Request
 	var err error
+	var uri string
 	if contractID == "" && txnType == "" {
 		return nil, errors.New("invalid parameters: you must provide one of contractID or txnType")
 	} else if contractID != "" {
 		path := "/contract"
-		uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, contractID)
-		req, err = http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+		uri = fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, contractID)
 	} else if txnType != "" {
 		path := "/contract/txn_type"
-		uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, txnType)
-		req, err = http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
-		fmt.Println(uri)
+		uri = fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, txnType)
 	}
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.httpClient.Get(uri)
+	if err != nil {
+		return nil, err
+	}
 	defer resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -196,15 +189,11 @@ func (client *Client) PostContract(contract *ContractConfiguration) (*Response, 
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(b))
+	resp, err := client.httpClient.Post(uri, "content/json", bytes.NewBuffer(b))
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
 	defer resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -269,15 +258,11 @@ func (client *Client) GetTransaction(txnID string) (*Response, error) {
 	path := "/transaction"
 	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, txnID)
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	resp, err := client.httpClient.Get(uri)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
 	defer resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -302,15 +287,11 @@ func (client *Client) PostTransaction(txn *PostTransaction) (*Response, error) {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(b))
+	resp, err := client.httpClient.Post(uri, "content/json", bytes.NewBuffer(b))
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
 	defer resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -334,15 +315,11 @@ func (client *Client) PostTransactionBulk(txn []*PostTransaction) (*Response, er
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(txnBytes))
+	resp, err := client.httpClient.Post(uri, "content/json", bytes.NewBuffer(txnBytes))
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
 	defer resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -381,15 +358,11 @@ func (client *Client) GetBlock(blockID string) (*Response, error) {
 	path := "/block"
 	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, blockID)
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	resp, err := client.httpClient.Get(uri)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
 	defer resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -483,15 +456,11 @@ func (client *Client) GetSCHeap(scID, key string) (*Response, error) {
 	path := "/get"
 	uri := fmt.Sprintf("%s%s/%s/%s", client.apiBaseURL, path, scID, key)
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	resp, err := client.httpClient.Get(uri)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
 	defer resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -518,15 +487,11 @@ func (client *Client) ListSCHeap(scID, folder string) (*Response, error) {
 		uri = fmt.Sprintf("%s%s", uri, folder)
 	}
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	resp, err := client.httpClient.Get(uri)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
 	defer resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -541,15 +506,11 @@ func (client *Client) GetTransactionType(transactionType string) (*Response, err
 	path := "/transaction-type"
 	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, transactionType)
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	resp, err := client.httpClient.Get(uri)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
 	defer resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -569,15 +530,11 @@ func (client *Client) ListTransactionTypes() (*Response, error) {
 	path := "/transaction-types"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	resp, err := client.httpClient.Get(uri)
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
 	defer resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -632,15 +589,11 @@ func (client *Client) RegisterTransactionType(transactionType string, customInde
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(b))
+	resp, err := client.httpClient.Post(uri, "content/json", bytes.NewBuffer(b))
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
 	defer resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
