@@ -1,3 +1,14 @@
+// Copyright 2019 Dragonchain, Inc. or its affiliates. All Rights Reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package dragonchain
 
 import (
@@ -15,15 +26,16 @@ import (
 )
 
 const (
+	// MaxBulkPutSize is the configurable limit of how many txn can be included in a bulk operation.
 	MaxBulkPutSize = 250
 )
 
 type postTransactionResponse struct {
-	TransactionId string `json:"transaction_id"`
+	TransactionID string `json:"transaction_id"`
 }
 
 type postBulkTransactionResponse struct {
-	TransactionIds []string           `json:"201"`
+	TransactionIDs []string           `json:"201"`
 	Failed         []*PostTransaction `json:"400"`
 }
 
@@ -31,25 +43,36 @@ type searchTransactionResponse struct {
 	Results []*Transaction `json:"results"`
 }
 
+// Client defines the structure of the DragonchainSDK client.
 type Client struct {
 	creds      Authenticator
-	apiBaseUrl string
+	apiBaseURL string
 
 	httpClient *http.Client
 	ctx        context.Context
 }
 
-func NewClient(ctx context.Context, creds Authenticator, apiBaseUrl string, httpClient *http.Client) *Client {
+// NewClient creates a new instance of client.
+// Requires Authenticator credentials to already have been created using dragonchain.NewCredentials.
+// apiBaseUrl is optional and for use when interacting with chains outside of the managed service.
+// httpClient is also optional, for if you wish to designate custom headers to apply to requests.
+func NewClient(creds Authenticator, apiBaseURL string, httpClient *http.Client) *Client {
+	if apiBaseURL == "" {
+		apiBaseURL = fmt.Sprintf("https://%s.api.dragonchain.com", creds.GetDragonchainID())
+	}
+	if httpClient == nil {
+		httpClient = &http.Client{}
+	}
 	client := &Client{
 		creds:      creds,
-		apiBaseUrl: apiBaseUrl,
+		apiBaseURL: apiBaseURL,
 		httpClient: httpClient,
-		ctx:        ctx,
 	}
 
 	return client
 }
 
+// setHeaders sets the http headers of a request to the chain with proper authorization.
 func (client *Client) setHeaders(req *http.Request, httpVerb, path, contentType, content string) {
 	now := time.Now().UTC().Format("2006-01-02T15:04:05.000000Z07:00")
 
@@ -58,14 +81,19 @@ func (client *Client) setHeaders(req *http.Request, httpVerb, path, contentType,
 	}
 
 	req.Header.Set("Accept", "application/json")
-	req.Header.Set("Dragonchain", client.creds.GetDragonchainId())
+	req.Header.Set("Dragonchain", client.creds.GetDragonchainID())
 	req.Header.Set("Timestamp", fmt.Sprintf("%s", now))
 	req.Header.Set("Authorization", client.creds.GetAuthorization(httpVerb, path, now, contentType, content))
 }
 
-func (client *Client) GetSmartContractHeap(ctx context.Context, trans *GetSmartContractHeap) (string, error) {
-	path := fmt.Sprintf("/get/%s/%s", trans.SCName, trans.Key)
-	uri := fmt.Sprintf("%s%s", client.apiBaseUrl, path)
+// GetSmartContractHeap gets data from a given smart contract's heap.
+// If SCName is not provided, the go-sdk will try to pull it from the environment.
+func (client *Client) GetSmartContractHeap(getHeap *GetSmartContractHeap) (string, error) {
+	if getHeap.SCName == "" {
+		getHeap.SCName = os.Getenv("SMART_CONTRACT_ID")
+	}
+	path := fmt.Sprintf("/get/%s/%s", getHeap.SCName, getHeap.Key)
+	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 
 	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
 	if err != nil {
@@ -81,27 +109,28 @@ func (client *Client) GetSmartContractHeap(ctx context.Context, trans *GetSmartC
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		return "", NewDCRequestError(resp)
+		return "", NewRequestError(resp)
 	}
 
 	return "", err
 }
 
-func (client *Client) PostTransaction(ctx context.Context, trans *PostTransaction) (string, error) {
+// PostTransaction to a chain.
+func (client *Client) PostTransaction(txn *PostTransaction) (string, error) {
 	path := "/transaction"
-	uri := fmt.Sprintf("%s%s", client.apiBaseUrl, path)
+	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 
-	trainsBytes, err := json.Marshal(trans)
+	b, err := json.Marshal(txn)
 	if err != nil {
 		return "", err
 	}
 
-	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(trainsBytes))
+	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(b))
 	if err != nil {
 		return "", err
 	}
 
-	client.setHeaders(req, "POST", path, "application/json", string(trainsBytes))
+	client.setHeaders(req, "POST", path, "application/json", string(b))
 
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
@@ -110,7 +139,7 @@ func (client *Client) PostTransaction(ctx context.Context, trans *PostTransactio
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated {
-		return "", NewDCRequestError(resp)
+		return "", NewRequestError(resp)
 	}
 
 	decoder := json.NewDecoder(resp.Body)
@@ -121,52 +150,16 @@ func (client *Client) PostTransaction(ctx context.Context, trans *PostTransactio
 		return "", err
 	}
 
-	return respData.TransactionId, nil
+	return respData.TransactionID, nil
 }
 
-func (client *Client) PostTemp(ctx context.Context, trans *PostTempTransaction) (string, error) {
-	path := "/transaction"
-	uri := fmt.Sprintf("%s%s", client.apiBaseUrl, path)
-
-	trainsBytes, err := json.Marshal(trans)
-	if err != nil {
-		return "", err
-	}
-
-	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(trainsBytes))
-	if err != nil {
-		return "", err
-	}
-
-	client.setHeaders(req, "POST", path, "application/json", string(trainsBytes))
-
-	resp, err := client.httpClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusCreated {
-		return "", NewDCRequestError(resp)
-	}
-
-	decoder := json.NewDecoder(resp.Body)
-
-	var respData postTransactionResponse
-	err = decoder.Decode(&respData)
-	if err != nil {
-		return "", err
-	}
-
-	return respData.TransactionId, nil
-}
-
+// PostBulkTransactions sends many transactions to a chain in a single HTTP request.
 func (client *Client) PostBulkTransactions(trans []*PostTransaction) ([]string, []*PostTransaction, error) {
 	path := "/transaction_bulk"
-	uri := fmt.Sprintf("%s%s", client.apiBaseUrl, path)
+	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 
 	if len(trans) > MaxBulkPutSize {
-		return nil, nil, MaxBulkSizeError
+		return nil, nil, ErrMaxBulkSizeExceeded
 	}
 
 	trainsBytes, err := json.Marshal(trans)
@@ -188,7 +181,7 @@ func (client *Client) PostBulkTransactions(trans []*PostTransaction) ([]string, 
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusMultiStatus {
-		return nil, nil, NewDCRequestError(resp)
+		return nil, nil, NewRequestError(resp)
 	}
 
 	decoder := json.NewDecoder(resp.Body)
@@ -199,12 +192,13 @@ func (client *Client) PostBulkTransactions(trans []*PostTransaction) ([]string, 
 		return nil, nil, err
 	}
 
-	return respData.TransactionIds, respData.Failed, nil
+	return respData.TransactionIDs, respData.Failed, nil
 }
 
+// Status returns the chain's status, such as Active or Updating.
 func (client *Client) Status() (string, error) {
 	path := "/status"
-	uri := fmt.Sprintf("%s%s", client.apiBaseUrl, path)
+	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 
 	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
 	if err != nil {
@@ -220,16 +214,17 @@ func (client *Client) Status() (string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return "", NewDCRequestError(resp)
+		return "", NewRequestError(resp)
 	}
 
 	msg, err := ioutil.ReadAll(resp.Body)
 	return string(msg), err
 }
 
-func (client *Client) GetTransaction(transId string) (*Transaction, error) {
+// GetTransaction gets a transaction from the chain by id.
+func (client *Client) GetTransaction(txnID string) (*Transaction, error) {
 	path := "/transaction"
-	uri := fmt.Sprintf("%s%s/%s", client.apiBaseUrl, path, transId)
+	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, txnID)
 
 	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
 	if err != nil {
@@ -245,7 +240,7 @@ func (client *Client) GetTransaction(transId string) (*Transaction, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewDCRequestError(resp)
+		return nil, NewRequestError(resp)
 	}
 
 	decoder := json.NewDecoder(resp.Body)
@@ -259,9 +254,10 @@ func (client *Client) GetTransaction(transId string) (*Transaction, error) {
 	return &respData, nil
 }
 
+// QueryTransactions gets all transactions matching the given query on the chain.
 func (client *Client) QueryTransactions(query *Query) ([]*Transaction, error) {
 	path := "/transaction"
-	uri := fmt.Sprintf("%s%s", client.apiBaseUrl, path)
+	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 
 	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
 	if err != nil {
@@ -282,7 +278,7 @@ func (client *Client) QueryTransactions(query *Query) ([]*Transaction, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewDCRequestError(resp)
+		return nil, NewRequestError(resp)
 	}
 
 	decoder := json.NewDecoder(resp.Body)
@@ -296,9 +292,10 @@ func (client *Client) QueryTransactions(query *Query) ([]*Transaction, error) {
 	return respData.Results, nil
 }
 
-func (client *Client) GetSCHeap(scId, key string) (io.Reader, error) {
-	if len(scId) == 0 {
-		scId = os.Getenv("SMART_CONTRACT_ID")
+// GetSCHeap returns a specific key from a smart contract's heap.
+func (client *Client) GetSCHeap(scID, key string) (io.Reader, error) {
+	if len(scID) == 0 {
+		scID = os.Getenv("SMART_CONTRACT_ID")
 	}
 
 	if len(key) == 0 {
@@ -306,7 +303,7 @@ func (client *Client) GetSCHeap(scId, key string) (io.Reader, error) {
 	}
 
 	path := "/get"
-	uri := fmt.Sprintf("%s%s/%s/%s", client.apiBaseUrl, path, scId, key)
+	uri := fmt.Sprintf("%s%s/%s/%s", client.apiBaseURL, path, scID, key)
 
 	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
 	if err != nil {
@@ -321,19 +318,21 @@ func (client *Client) GetSCHeap(scId, key string) (io.Reader, error) {
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewDCRequestError(resp)
+		return nil, NewRequestError(resp)
 	}
 
 	return resp.Body, nil
 }
 
-func (client *Client) ListSCHeap(scId, folder string) ([]string, error) {
-	if len(scId) == 0 {
-		scId = os.Getenv("SMART_CONTRACT_ID")
+// ListSCHeap lists out all keys from a smart contract's heap.
+// Optionally, folder can be provided to only list a subset of keys.
+func (client *Client) ListSCHeap(scID, folder string) ([]string, error) {
+	if len(scID) == 0 {
+		scID = os.Getenv("SMART_CONTRACT_ID")
 	}
 
 	path := "/list"
-	uri := fmt.Sprintf("%s%s/%s/", client.apiBaseUrl, path, scId)
+	uri := fmt.Sprintf("%s%s/%s/", client.apiBaseURL, path, scID)
 
 	if len(folder) > 0 {
 		if strings.HasSuffix(folder, "/") {
@@ -356,7 +355,7 @@ func (client *Client) ListSCHeap(scId, folder string) ([]string, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, NewDCRequestError(resp)
+		return nil, NewRequestError(resp)
 	}
 
 	decoder := json.NewDecoder(resp.Body)

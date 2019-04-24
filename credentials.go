@@ -17,20 +17,20 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"golang.org/x/crypto/blake2b"
-	"golang.org/x/crypto/sha3"
 	"hash"
 	"os"
 	"strings"
+
+	"golang.org/x/crypto/blake2b"
+	"golang.org/x/crypto/sha3"
 )
 
 var (
-	// Returned if an unsupported hash algorithm was given
-	UnSupportedHashMethodError = errors.New("hash method not supported")
+	// ErrUnsupportedHashAlgo is thrown when an unsupported hash method is provided.
+	ErrUnsupportedHashAlgo = errors.New("hash method not supported")
 
-	// Returned if no credentials where given and none could be found in the
-	// system environmental variables or a Configuration file.
-	NoCredentialsFoundError = errors.New("no credentials found")
+	// ErrNoCredentials is thrown if no credentials file can be found.
+	ErrNoCredentials = errors.New("no credentials found")
 )
 
 // Supported hash functions
@@ -40,31 +40,30 @@ const (
 	HashBLAKE2b512 = "BLAKE2b512"
 )
 
-// Environmental variable names used to get the Dragonchain ID and Keys from the
-// system environmental variables. These can be overridden before calling NewCredentials
+// Environment variables used to get chainID and Keys. These can be overridden before calling NewCredentials.
 var (
-	EnvDcIdName  = "DRAGONCHAIN_ID"
+	EnvDcIDName  = "DRAGONCHAIN_ID"
 	EnvKeyName   = "AUTH_KEY"
-	EnvKeyIdName = "AUTH_KEY_ID"
+	EnvKeyIDName = "AUTH_KEY_ID"
 )
 
-// Interface used by the dragonchain client for generating the Authentication header
+// Authenticator generates the authentication header for requests to chain.
 type Authenticator interface {
-	GetDragonchainId() string
+	GetDragonchainID() string
 	GetAuthorization(httpVerb, path string, timestamp, contentType, content string) string
 }
 
-// Credentials implements the Authenticator interface and generates a hmac Authentication
-// headers using the supported hashing algorithms SHA257, SH3-256, or BLAKE2b512
+// Credentials implements the Authenticator interface to generate authentication headers.
 type Credentials struct {
-	dcId      string
+	dcID      string
 	authKey   string
-	authKeyId string
+	authKeyID string
 	algorithm string
 	hashFunc  func() hash.Hash
 }
 
-func NewCredentials(dcId, authKey, authKeyId, algorithm string) (*Credentials, error) {
+// NewCredentials uses the provided values to create a new Credentials instance for the given chain.
+func NewCredentials(dcID, authKey, authKeyID, algorithm string) (*Credentials, error) {
 	var err error
 	var hashFunc func() hash.Hash
 
@@ -88,93 +87,91 @@ func NewCredentials(dcId, authKey, authKeyId, algorithm string) (*Credentials, e
 			return h
 		}
 	default:
-		return nil, UnSupportedHashMethodError
+		return nil, ErrUnsupportedHashAlgo
 	}
 
-	if len(dcId) == 0 {
-		if dcId, err = getDragonchainId(); err != nil {
+	if len(dcID) == 0 {
+		if dcID, err = getDragonchainID(); err != nil {
 			return nil, err
 		}
 	}
 	if len(authKey) == 0 {
-		if authKey, err = getAuthKey(dcId); err != nil {
+		if authKey, err = getAuthKey(dcID); err != nil {
 			return nil, err
 		}
 	}
-	if len(authKeyId) == 0 {
-		if authKeyId, err = getAuthKeyId(dcId); err != nil {
+	if len(authKeyID) == 0 {
+		if authKeyID, err = getAuthKeyID(dcID); err != nil {
 			return nil, err
 		}
 	}
 
-	// If dcId, authKey, or authKeyId are empty, we must return an error
-	if len(dcId) == 0 || len(authKey) == 0 || len(authKeyId) == 0 {
-		return nil, NoCredentialsFoundError
+	// If dcID, authKey, or authKeyID are empty, we must return an error
+	if len(dcID) == 0 || len(authKey) == 0 || len(authKeyID) == 0 {
+		return nil, ErrNoCredentials
 	}
 
 	return &Credentials{
-		dcId:      dcId,
+		dcID:      dcID,
 		authKey:   authKey,
-		authKeyId: authKeyId,
+		authKeyID: authKeyID,
 		algorithm: algorithm,
 		hashFunc:  hashFunc,
 	}, nil
 }
 
-func getDragonchainId() (string, error) {
-	dcId := os.Getenv(EnvDcIdName)
-	if len(dcId) > 0 {
-		return dcId, nil
+func getDragonchainID() (string, error) {
+	dcID := os.Getenv(EnvDcIDName)
+	if len(dcID) > 0 {
+		return dcID, nil
 	}
 
 	configs, err := GetCredentialConfigs()
-	if err == NoConfigurationFileFoundError {
+	if err == ErrNoConfigurationFileFound {
 		return "", nil
 	} else if err != nil {
 		return "", err
 	}
 
-	return configs.DefaultDcId, nil
+	return configs.DefaultDcID, nil
 }
 
-func getAuthKey(dcId string) (string, error) {
+func getAuthKey(dcID string) (string, error) {
 	authKey := os.Getenv(EnvKeyName)
 	if len(authKey) > 0 {
 		return authKey, nil
 	}
 
 	configs, err := GetCredentialConfigs()
-	if err == NoConfigurationFileFoundError {
+	if err == ErrNoConfigurationFileFound {
 		return "", nil
 	} else if err != nil {
 		return "", err
 	}
-
-	if key, ok := configs.AuthKeys[dcId]; !ok {
+	key, ok := configs.AuthKeys[dcID]
+	if !ok {
 		return "", nil
-	} else {
-		return key.AuthKey, nil
 	}
+	return key.AuthKey, nil
 }
 
-func getAuthKeyId(dcId string) (string, error) {
-	authKeyId := os.Getenv(EnvKeyIdName)
-	if len(authKeyId) > 0 {
-		return authKeyId, nil
+func getAuthKeyID(ID string) (string, error) {
+	authKeyID := os.Getenv(EnvKeyIDName)
+	if len(authKeyID) > 0 {
+		return authKeyID, nil
 	}
 
 	configs, err := GetCredentialConfigs()
-	if err == NoConfigurationFileFoundError {
+	if err == ErrNoConfigurationFileFound {
 		return "", nil
 	} else if err != nil {
 		return "", err
 	}
-
-	if key, ok := configs.AuthKeys[dcId]; !ok {
+	key, ok := configs.AuthKeys[ID]
+	if !ok {
 		return "", nil
-	} else {
-		return key.AuthKeyId, nil
 	}
+	return key.AuthKeyID, nil
 }
 
 func (creds *Credentials) hmacMessage(httpVerb, path string, timestamp, contentType, content string) string {
@@ -187,7 +184,7 @@ func (creds *Credentials) hmacMessage(httpVerb, path string, timestamp, contentT
 	msg := fmt.Sprintf("%s\n%s\n%s\n%s\n%s\n%s",
 		strings.ToUpper(httpVerb),
 		path,
-		creds.dcId,
+		creds.dcID,
 		timestamp,
 		contentType,
 		b64Content,
@@ -202,17 +199,20 @@ func (creds *Credentials) createHmac(secret, message string) []byte {
 	return h.Sum(nil)
 }
 
+// CompareHmac returns true if the hmac provided matches the current chain's signature, else false.
 func (creds *Credentials) CompareHmac(hmacBytes []byte, secret, message string) bool {
 	return hmac.Equal(hmacBytes, creds.createHmac(secret, message))
 }
 
-func (creds *Credentials) GetDragonchainId() string {
-	return creds.dcId
+// GetDragonchainID returns the current chain's ID.
+func (creds *Credentials) GetDragonchainID() string {
+	return creds.dcID
 }
 
+// GetAuthorization returns the current chain's authorization as a string.
 func (creds *Credentials) GetAuthorization(httpVerb, path string, timestamp, contentType, content string) string {
 	msgStr := creds.hmacMessage(httpVerb, path, timestamp, contentType, content)
 	hmacMsg := creds.createHmac(creds.authKey, msgStr)
 	b64hmac := base64.StdEncoding.EncodeToString(hmacMsg)
-	return fmt.Sprintf("DC1-HMAC-%s %s:%s", creds.algorithm, creds.authKeyId, b64hmac)
+	return fmt.Sprintf("DC1-HMAC-%s %s:%s", creds.algorithm, creds.authKeyID, b64hmac)
 }

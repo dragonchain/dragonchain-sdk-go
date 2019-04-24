@@ -1,13 +1,25 @@
+// Copyright 2019 Dragonchain, Inc. or its affiliates. All Rights Reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//     http://www.apache.org/licenses/LICENSE-2.0
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package dragonchain
 
 import (
 	"errors"
-	"github.com/go-ini/ini"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"runtime"
+
+	"github.com/go-ini/ini"
 )
 
 var (
@@ -21,8 +33,8 @@ var (
 )
 
 var (
-	// Returned if no Configuration file was found in the ConfigFilePath path
-	NoConfigurationFileFoundError = errors.New("no Configuration file found")
+	// ErrNoConfigurationFileFound is returned if no config was found in ConfigFilePath.
+	ErrNoConfigurationFileFound = errors.New("no Configuration file found")
 )
 
 func init() {
@@ -33,16 +45,19 @@ func init() {
 	}
 }
 
+// AuthKey defines the structure of the chain's HMAC authorization keys.
 type AuthKey struct {
 	AuthKey   string
-	AuthKeyId string
+	AuthKeyID string
 }
 
+// Configuration defines the SDK configuration of chainID and AuthKeys.
 type Configuration struct {
-	DefaultDcId string
+	DefaultDcID string
 	AuthKeys    map[string]*AuthKey
 }
 
+// GetCredentialConfigs returns
 func GetCredentialConfigs() (*Configuration, error) {
 	if configs != nil {
 		return configs, nil
@@ -52,7 +67,7 @@ func GetCredentialConfigs() (*Configuration, error) {
 	if err != nil {
 		return nil, err
 	} else if configBytes == nil {
-		return nil, NoConfigurationFileFoundError
+		return nil, ErrNoConfigurationFileFound
 	}
 
 	cfg, err := ini.Load(configBytes)
@@ -60,10 +75,10 @@ func GetCredentialConfigs() (*Configuration, error) {
 		return nil, err
 	}
 
-	dcId := cfg.Section("default").Key("dragonchain_id").String()
+	dcID := cfg.Section("default").Key("dragonchain_id").String()
 
 	configs = &Configuration{
-		DefaultDcId: dcId,
+		DefaultDcID: dcID,
 		AuthKeys:    make(map[string]*AuthKey),
 	}
 
@@ -71,7 +86,7 @@ func GetCredentialConfigs() (*Configuration, error) {
 		if isValidUUID4(section.Name()) {
 			configs.AuthKeys[section.Name()] = &AuthKey{
 				AuthKey:   cfg.Section(section.Name()).Key("auth_key").String(),
-				AuthKeyId: cfg.Section(section.Name()).Key("auth_key_id").String(),
+				AuthKeyID: cfg.Section(section.Name()).Key("auth_key_id").String(),
 			}
 		}
 	}
