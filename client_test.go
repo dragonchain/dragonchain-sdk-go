@@ -12,6 +12,7 @@
 package dragonchain
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -80,6 +81,9 @@ func setUp() (*httptest.Server, *Client) {
 					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": \"banana\"}")
 				} else if strings.Contains(r.URL.RequestURI(), "list") {
 					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": \"banana\"}")
+				} else if strings.Contains(r.URL.RequestURI(), "test-dc-error") {
+					w.WriteHeader(400)
+					fmt.Fprint(w, "{\"status\": 400, \"ok\": false, \"response\": \"banana\"}")
 				}
 			} else if r.Method == "POST" {
 				if strings.Contains(r.URL.RequestURI(), "transaction_bulk") {
@@ -127,7 +131,35 @@ func TestOverrideCredentials(t *testing.T) {
 	assert.Equal(t, client.apiBaseURL, "farhost")
 }
 
+func TestNoCredentials(t *testing.T) {
+	server, _ := setUp()
+	client := NewClient(nil, server.URL, nil)
+	resp, err := client.QueryContracts(nil)
+	assert.Error(t, err, "no credentials found")
+	assert.Assert(t, resp == nil)
+}
+
+func TestDCError(t *testing.T) {
+	_, client := setUp()
+	uri := fmt.Sprintf("%s%s", client.apiBaseURL, "/test-dc-error")
+	req, _ := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	_, err := client.performRequest(req)
+	assert.Error(t, err, "dragonchain api error: Bad Request (400) body: {\"status\": 400, \"ok\": false, \"response\": \"banana\"}")
+}
+
 func TestGetSecret(t *testing.T) {
+	defer os.Remove("/tmp/sc-bananacoin-bananasecret")
+	file, err := os.Create("/tmp/sc-bananacoin-bananasecret")
+	defer file.Close()
+	file.WriteString("hello world")
+	os.Setenv("SMART_CONTRACT_ID", "bananacoin")
+	_, client := setUp()
+	resp, err := client.GetSecret("/tmp/sc-bananacoin-bananasecret", "")
+	assert.NilError(t, err, "GetSecret should not return an error")
+	assert.Equal(t, resp, "hello world")
+}
+
+func TestGetSecretError(t *testing.T) {
 	os.Setenv("SMART_CONTRACT_ID", "bananacoin")
 	_, client := setUp()
 	_, err := client.GetSecret("bananasecret", "")
@@ -437,6 +469,22 @@ func TestPostTransactionBulk(t *testing.T) {
 	assert.DeepEqual(t, resp.Response, map[string]interface{}{"201": []interface{}{"banana"}, "400": []interface{}{"apple"}})
 }
 
+func TestPostTransactionBulkSizeExceeded(t *testing.T) {
+	_, client := setUp()
+	txn := &PostTransaction{
+		Version: "latest",
+		TxnType: "banana",
+		Payload: make(map[string]interface{}),
+	}
+	txns := []*PostTransaction{}
+	for i := 0; i < 260; i++ {
+		txns = append(txns, txn)
+	}
+	resp, err := client.PostTransactionBulk(txns)
+	assert.Error(t, err, "too many transactions. transaction count can not be greater than MaxBulkPutSize")
+	assert.Assert(t, resp == nil)
+}
+
 func TestPostTransactionBulkRequestFails(t *testing.T) {
 	_, client := setUp()
 	fakeHTTPClient := clientMock{}
@@ -627,6 +675,21 @@ func TestGetSCHeap(t *testing.T) {
 	assert.Equal(t, resp.Response, "banana")
 }
 
+func TestGetSCHeapNoID(t *testing.T) {
+	_, client := setUp()
+	os.Setenv("SMART_CONTRACT_ID", "bananaContract")
+	resp, err := client.GetSCHeap("", "apple")
+	assert.NilError(t, err, "GetSCHeap should not return an error")
+	assert.Equal(t, resp.Response, "banana")
+}
+
+func TestGetSCHeapNoKey(t *testing.T) {
+	_, client := setUp()
+	resp, err := client.GetSCHeap("bananaContract", "")
+	assert.Error(t, err, "key can not be empty")
+	assert.Assert(t, resp == nil)
+}
+
 func TestGetSCHeapRequestFails(t *testing.T) {
 	_, client := setUp()
 	fakeHTTPClient := clientMock{}
@@ -641,6 +704,21 @@ func TestListSCHeap(t *testing.T) {
 	resp, err := client.ListSCHeap("bananaContract", "apple")
 	assert.NilError(t, err, "ListSCHeap should not return an error")
 	assert.Equal(t, resp.Response, "banana")
+}
+
+func TestListSCHeapNoID(t *testing.T) {
+	_, client := setUp()
+	os.Setenv("SMART_CONTRACT_ID", "bananaContract")
+	resp, err := client.ListSCHeap("", "apple")
+	assert.NilError(t, err, "ListSCHeap should not return an error")
+	assert.Equal(t, resp.Response, "banana")
+}
+
+func TestListSCHeapBadFolder(t *testing.T) {
+	_, client := setUp()
+	resp, err := client.ListSCHeap("bananaContract", "apple/")
+	assert.Error(t, err, "folder can not end with '/'")
+	assert.Assert(t, resp == nil)
 }
 
 func TestListSCHeapRequestFails(t *testing.T) {

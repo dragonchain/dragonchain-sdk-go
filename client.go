@@ -95,8 +95,14 @@ func (client *Client) GetSecret(secretName, scID string) (string, error) {
 	if scID == "" {
 		scID = os.Getenv("SMART_CONTRACT_ID")
 	}
+	var path string
+	// Allow users to specify their own paths
+	if strings.Contains(secretName, "/") {
+		path = secretName
+	} else {
+		path = fmt.Sprintf("/var/openfaas/secrets/sc-%s-%s", scID, secretName)
+	}
 
-	path := fmt.Sprintf("/var/openfaas/secrets/sc-%s-%s", scID, secretName)
 	file, err := os.Open(path)
 	defer file.Close()
 	if err == nil {
@@ -652,7 +658,10 @@ func (client *Client) setHeaders(req *http.Request, httpVerb, path, contentType,
 }
 
 func (client *Client) performRequest(req *http.Request) (*http.Response, error) {
-	client.setHeaders(req, req.Method, req.URL.RequestURI(), "application/json", "")
+	err := client.setHeaders(req, req.Method, req.URL.RequestURI(), "application/json", "")
+	if err != nil {
+		return nil, err
+	}
 	resp, err := client.httpClient.Do(req)
 	if err != nil {
 		return resp, err
@@ -665,6 +674,9 @@ func (client *Client) performRequest(req *http.Request) (*http.Response, error) 
 }
 
 func buildQuery(req *http.Request, query *Query) {
+	if query == nil {
+		return
+	}
 	q := req.URL.Query()
 	q.Add("q", query.Query)
 	if query.Sort != "" {
