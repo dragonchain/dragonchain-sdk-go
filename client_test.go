@@ -27,6 +27,14 @@ import (
 	"gotest.tools/assert"
 )
 
+// Not a test. Designed for manual checking.
+// func TestMain(t *testing.T) {
+// 	creds, _ := NewCredentials("3a822827-9394-4930-b451-871748695a9a", "BeCTBDhOwPqYK6vHRTDNVdrxdm2G9DVurdlZOZmYhPF", "DCUTBPZRDYUR", "")
+// 	client := NewClient(creds, "", nil)
+// 	resp, _ := client.GetTransaction("4132741c-0327-4e20-a3ac-e8f4fc861532")
+// 	fmt.Printf("%+v\n", resp.Response)
+// }
+
 type clientMock struct {
 }
 
