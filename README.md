@@ -34,11 +34,11 @@ call, err := await client.GetBlock("block-id-here");
 
 if err != nil {
   fmt.Println("Something went wrong!");
-  fmt.Println("HTTP status code from chain: ${call.status}");
-  fmt.Println("Error response from chain: ${call.response}");
+  fmt.Printf("HTTP status code from chain: %s", call.status);
+  fmt.Printf("Error response from chain: %s", call.response);
 }
 fmt.Println("Successful call!");
-fmt.Println("Block: ${call.response}");
+fmt.Printf("Block: %s", call.response);
 ```
 
 #### QueryTransactions
