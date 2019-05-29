@@ -91,7 +91,7 @@ func (client *Client) OverrideCredentials(creds Authenticator, apiBaseURL string
 
 // GetSecret pulls a secret for a smart contract from the chain.
 // If scID is not provided, the SDK will attempt to pull it from the environment.
-func (client *Client) GetSecret(secretName, scID string) (string, error) {
+func (client *Client) GetSecret(secretName, scID string) (_ string, err error) {
 	if scID == "" {
 		scID = os.Getenv("SMART_CONTRACT_ID")
 	}
@@ -104,7 +104,9 @@ func (client *Client) GetSecret(secretName, scID string) (string, error) {
 	}
 
 	file, err := os.Open(path)
-	defer file.Close()
+	defer func() {
+		err = file.Close()
+	}()
 	if err == nil {
 		return parseSecret(file)
 	}
@@ -173,15 +175,20 @@ func (client *Client) GetSmartContract(contractID, txnType string) (*Response, e
 		return nil, err
 	}
 	// Handle conversion of Response from an interface{} to Contract for the user.
-	raw, _ := json.Marshal(resp.Response)
+	raw, err := json.Marshal(resp.Response)
+	if err != nil {
+		return nil, err
+	}
 	var contract Contract
-	json.Unmarshal(raw, &contract)
+	if err := json.Unmarshal(raw, &contract); err != nil {
+		return nil, err
+	}
 	resp.Response = contract
 	return resp, err
 }
 
 // PostContract creates a new smart contract on the chain.
-func (client *Client) PostContract(contract *ContractConfiguration) (*Response, error) {
+func (client *Client) PostContract(contract *ContractConfiguration) (_ *Response, err error) {
 	path := "/contract"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 	b, err := json.Marshal(contract)
@@ -193,7 +200,9 @@ func (client *Client) PostContract(contract *ContractConfiguration) (*Response, 
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+	}()
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -255,13 +264,15 @@ func (client *Client) GetTransaction(txnID string) (*Response, error) {
 	}
 	// Handle conversion of Response from an interface{} to Transaction for the user.
 	var txn Transaction
-	json.Unmarshal(resp.Response.([]byte), &txn)
+	if err := json.Unmarshal(resp.Response.([]byte), &txn); err != nil {
+		return nil, err
+	}
 	resp.Response = txn
 	return resp, err
 }
 
 // PostTransaction creates a transaction on the chain.
-func (client *Client) PostTransaction(txn *PostTransaction) (*Response, error) {
+func (client *Client) PostTransaction(txn *PostTransaction) (_ *Response, err error) {
 	path := "/transaction"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 
@@ -274,7 +285,9 @@ func (client *Client) PostTransaction(txn *PostTransaction) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+	}()
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -285,7 +298,7 @@ func (client *Client) PostTransaction(txn *PostTransaction) (*Response, error) {
 }
 
 // PostTransactionBulk sends many transactions to a chain in a single HTTP request.
-func (client *Client) PostTransactionBulk(txn []*PostTransaction) (*Response, error) {
+func (client *Client) PostTransactionBulk(txn []*PostTransaction) (_ *Response, err error) {
 	path := "/transaction_bulk"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 
@@ -302,7 +315,9 @@ func (client *Client) PostTransactionBulk(txn []*PostTransaction) (*Response, er
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+	}()
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -343,9 +358,14 @@ func (client *Client) GetBlock(blockID string) (*Response, error) {
 		return nil, err
 	}
 	// Handle conversion of Response from an interface{} to Block for the user.
-	raw, _ := json.Marshal(resp.Response)
+	raw, err := json.Marshal(resp.Response)
+	if err != nil {
+		return nil, err
+	}
 	var block Block
-	json.Unmarshal(raw, &block)
+	if err := json.Unmarshal(raw, &block); err != nil {
+		return nil, err
+	}
 	resp.Response = block
 	return resp, err
 }
@@ -370,14 +390,24 @@ func (client *Client) GetVerification(blockID string, level int) (*Response, err
 	}
 	// Handle conversion of Response from an interface{} to Verification for the user.
 	if level > 0 {
-		raw, _ := json.Marshal(resp.Response)
+		raw, err := json.Marshal(resp.Response)
+		if err != nil {
+			return nil, err
+		}
 		var verificationBlocks []Block
-		json.Unmarshal(raw, &verificationBlocks)
+		if err := json.Unmarshal(raw, &verificationBlocks); err != nil {
+			return nil, err
+		}
 		resp.Response = verificationBlocks
 	} else {
-		raw, _ := json.Marshal(resp.Response)
+		raw, err := json.Marshal(resp.Response)
+		if err != nil {
+			return nil, err
+		}
 		var verification Verification
-		json.Unmarshal(raw, &verification)
+		if err := json.Unmarshal(raw, &verification); err != nil {
+			return nil, err
+		}
 		resp.Response = verification
 	}
 	return resp, err
@@ -468,9 +498,14 @@ func (client *Client) GetTransactionType(transactionType string) (*Response, err
 		return nil, err
 	}
 	// Handle conversion of Response from an interface{} to TransactionType for the user.
-	raw, _ := json.Marshal(resp.Response)
+	raw, err := json.Marshal(resp.Response)
+	if err != nil {
+		return nil, err
+	}
 	var txnType TransactionType
-	json.Unmarshal(raw, &txnType)
+	if err := json.Unmarshal(raw, &txnType); err != nil {
+		return nil, err
+	}
 	resp.Response = txnType
 	return resp, err
 }
@@ -516,7 +551,7 @@ func (client *Client) UpdateTransactionType(transactionType string, customIndexe
 }
 
 // RegisterTransactionType creates a new transaction type.
-func (client *Client) RegisterTransactionType(transactionType string, customIndexes []CustomIndexStructure) (*Response, error) {
+func (client *Client) RegisterTransactionType(transactionType string, customIndexes []CustomIndexStructure) (_ *Response, err error) {
 	path := "/transaction-type"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
 	var params TransactionType
@@ -533,7 +568,9 @@ func (client *Client) RegisterTransactionType(transactionType string, customInde
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() {
+		err = resp.Body.Close()
+	}()
 	decoder := json.NewDecoder(resp.Body)
 	var chainResp Response
 	err = decoder.Decode(&chainResp)
@@ -587,7 +624,10 @@ func (client *Client) performRequest(req *http.Request) (*Response, error) {
 		return nil, err
 	}
 	var chainResp Response
-	chainResp.Response, _ = ioutil.ReadAll(resp.Body)
+	chainResp.Response, err = ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
 	chainResp.Status = resp.StatusCode
 	if 200 <= resp.StatusCode && resp.StatusCode < 300 {
 		chainResp.OK = true

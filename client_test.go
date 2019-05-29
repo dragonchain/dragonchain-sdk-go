@@ -62,58 +62,64 @@ var testServer *httptest.Server
 func setUp() (*httptest.Server, *Client) {
 	if testServer == nil {
 		testServer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			mustWrite := func(_ int, err error) {
+				if err != nil {
+					panic(err)
+				}
+			}
+
 			if r.Method == "GET" {
 				if strings.Contains(r.URL.RequestURI(), "transaction-types") {
-					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"transaction_types\": [{\"version\": \"1\", \"txn_type\": \"banana\", \"custom_indexes\": [], \"contract_id\": false}]}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"transaction_types\": [{\"version\": \"1\", \"txn_type\": \"banana\", \"custom_indexes\": [], \"contract_id\": false}]}}"))
 				} else if strings.Contains(r.URL.RequestURI(), "transaction-type") {
-					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"version\": \"1\", \"txn_type\": \"banana\", \"custom_indexes\": [], \"contract_id\": false}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"version\": \"1\", \"txn_type\": \"banana\", \"custom_indexes\": [], \"contract_id\": false}}"))
 				} else if strings.Contains(r.URL.RequestURI(), "transaction") && r.URL.RawQuery != "" {
-					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"results\": [{\"version\": \"1\", \"dcrn\": \"Transaction::L1::FullTransaction\", \"header\": {\"txn_type\": \"TEST\", \"dc_id\": \"banana\", \"txn_id\": \"banana-txn\", \"block_id\": \"24626984\", \"timestamp\": \"1555373138\", \"tag\": \"\", \"invoker\": \"\"}, \"payload\": {\"Hello\": \"World\"}, \"proof\": {\"full\": \"proof\", \"stripped\": \"banana=\"}}]}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"results\": [{\"version\": \"1\", \"dcrn\": \"Transaction::L1::FullTransaction\", \"header\": {\"txn_type\": \"TEST\", \"dc_id\": \"banana\", \"txn_id\": \"banana-txn\", \"block_id\": \"24626984\", \"timestamp\": \"1555373138\", \"tag\": \"\", \"invoker\": \"\"}, \"payload\": {\"Hello\": \"World\"}, \"proof\": {\"full\": \"proof\", \"stripped\": \"banana=\"}}]}}"))
 				} else if strings.Contains(r.URL.RequestURI(), "transaction") {
-					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"version\": \"1\", \"dcrn\": \"Transaction::L1::FullTransaction\", \"header\": {\"txn_type\": \"TEST\", \"dc_id\": \"banana\", \"txn_id\": \"banana-txn\", \"block_id\": \"24626984\", \"timestamp\": \"1555373138\", \"tag\": \"\", \"invoker\": \"\"}, \"payload\": {\"Hello\": \"World\"}, \"proof\": {\"full\": \"proof\", \"stripped\": \"banana=\"}}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"version\": \"1\", \"dcrn\": \"Transaction::L1::FullTransaction\", \"header\": {\"txn_type\": \"TEST\", \"dc_id\": \"banana\", \"txn_id\": \"banana-txn\", \"block_id\": \"24626984\", \"timestamp\": \"1555373138\", \"tag\": \"\", \"invoker\": \"\"}, \"payload\": {\"Hello\": \"World\"}, \"proof\": {\"full\": \"proof\", \"stripped\": \"banana=\"}}}"))
 				} else if strings.Contains(r.URL.RequestURI(), "status") {
-					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"dragonchainName\": \"banana\", \"dragonchainVersion\": \"3.0.11\", \"level\": \"1\"}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"dragonchainName\": \"banana\", \"dragonchainVersion\": \"3.0.11\", \"level\": \"1\"}}"))
 				} else if strings.Contains(r.URL.RequestURI(), "block") && r.URL.RawQuery != "" {
-					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"results\": [{\"version\": \"1\", \"dcrn\": \"Block::L1::AtRest\", \"header\": {\"dc_id\": \"banana\", \"block_id\": \"24643517\", \"level\": 1, \"timestamp\": \"1555455805\", \"prev_id\": \"24643516\", \"prev_proof\": \"banana\"}, \"transactions\": [], \"proof\": {\"scheme\": \"trust\", \"proof\": \"bananana\"}}]}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"results\": [{\"version\": \"1\", \"dcrn\": \"Block::L1::AtRest\", \"header\": {\"dc_id\": \"banana\", \"block_id\": \"24643517\", \"level\": 1, \"timestamp\": \"1555455805\", \"prev_id\": \"24643516\", \"prev_proof\": \"banana\"}, \"transactions\": [], \"proof\": {\"scheme\": \"trust\", \"proof\": \"bananana\"}}]}}"))
 				} else if strings.Contains(r.URL.RequestURI(), "block") {
-					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"version\": \"1\", \"dcrn\": \"Block::L1::AtRest\", \"header\": {\"dc_id\": \"banana\", \"block_id\": \"24643517\", \"level\": 1, \"timestamp\": \"1555455805\", \"prev_id\": \"24643516\", \"prev_proof\": \"banana\"}, \"transactions\": [], \"proof\": {\"scheme\": \"trust\", \"proof\": \"bananana\"}}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"version\": \"1\", \"dcrn\": \"Block::L1::AtRest\", \"header\": {\"dc_id\": \"banana\", \"block_id\": \"24643517\", \"level\": 1, \"timestamp\": \"1555455805\", \"prev_id\": \"24643516\", \"prev_proof\": \"banana\"}, \"transactions\": [], \"proof\": {\"scheme\": \"trust\", \"proof\": \"bananana\"}}}"))
 				} else if strings.Contains(r.URL.RequestURI(), "verifications") && r.URL.RawQuery != "" {
-					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": [{\"version\": \"1\", \"dcrn\": \"Block::L2::AtRest\", \"header\": {}, \"validation\": {\"dc_id\": \"banana\", \"block_id\": \"24641157\", \"stripped_proof\": \"\", \"transactions\": \"{\\\"6f4aaf5b-0b9e-4447-9351-5e7c478dac62\\\": true}\"}, \"proof\": {\"scheme\": \"trust\", \"proof\": \"proofnana\"}}]}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": [{\"version\": \"1\", \"dcrn\": \"Block::L2::AtRest\", \"header\": {}, \"validation\": {\"dc_id\": \"banana\", \"block_id\": \"24641157\", \"stripped_proof\": \"\", \"transactions\": \"{\\\"6f4aaf5b-0b9e-4447-9351-5e7c478dac62\\\": true}\"}, \"proof\": {\"scheme\": \"trust\", \"proof\": \"proofnana\"}}]}"))
 				} else if strings.Contains(r.URL.RequestURI(), "verifications") {
-					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"2\": [{\"version\": \"1\", \"dcrn\": \"Block::L2::AtRest\", \"header\": {}, \"validation\": {\"dc_id\": \"banana\", \"block_id\": \"24641157\", \"stripped_proof\": \"\", \"transactions\": \"{\\\"6f4aaf5b-0b9e-4447-9351-5e7c478dac62\\\": true}\"}, \"proof\": {\"scheme\": \"trust\", \"proof\": \"proofnana\"}}]}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"2\": [{\"version\": \"1\", \"dcrn\": \"Block::L2::AtRest\", \"header\": {}, \"validation\": {\"dc_id\": \"banana\", \"block_id\": \"24641157\", \"stripped_proof\": \"\", \"transactions\": \"{\\\"6f4aaf5b-0b9e-4447-9351-5e7c478dac62\\\": true}\"}, \"proof\": {\"scheme\": \"trust\", \"proof\": \"proofnana\"}}]}}"))
 				} else if strings.Contains(r.URL.RequestURI(), "contract/banana") || strings.Contains(r.URL.RequestURI(), "contract/txn_type/banana") {
-					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"dcrn\": \"SmartContract::L1::AtRest\", \"version\": \"1\", \"txn_type\": \"banana\", \"id\": \"banana-sc-id\", \"status\": {\"state\": \"active\", \"msg\": \"\", \"timestamp\": \"2019-04-21 11:01:53.113408\"}, \"image\": \"bananamage\", \"auth_key_id\": \"SC_BANANA\", \"image_digest\": \"\", \"cmd\": \"node\", \"args\": [\"index.js\"], \"execution_order\": \"serial\"}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"dcrn\": \"SmartContract::L1::AtRest\", \"version\": \"1\", \"txn_type\": \"banana\", \"id\": \"banana-sc-id\", \"status\": {\"state\": \"active\", \"msg\": \"\", \"timestamp\": \"2019-04-21 11:01:53.113408\"}, \"image\": \"bananamage\", \"auth_key_id\": \"SC_BANANA\", \"image_digest\": \"\", \"cmd\": \"node\", \"args\": [\"index.js\"], \"execution_order\": \"serial\"}}"))
 				} else if strings.Contains(r.URL.RequestURI(), "contract") {
-					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"results\": [{\"dcrn\": \"SmartContract::L1::AtRest\", \"version\": \"1\", \"txn_type\": \"banana\", \"id\": \"banana-sc-id\", \"status\": {\"state\": \"active\", \"msg\": \"\", \"timestamp\": \"2019-04-21 11:01:53.113408\"}, \"image\": \"bananamage\", \"auth_key_id\": \"SC_BANANA\", \"image_digest\": \"\", \"cmd\": \"node\", \"args\": [\"index.js\"], \"execution_order\": \"serial\"}]}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"results\": [{\"dcrn\": \"SmartContract::L1::AtRest\", \"version\": \"1\", \"txn_type\": \"banana\", \"id\": \"banana-sc-id\", \"status\": {\"state\": \"active\", \"msg\": \"\", \"timestamp\": \"2019-04-21 11:01:53.113408\"}, \"image\": \"bananamage\", \"auth_key_id\": \"SC_BANANA\", \"image_digest\": \"\", \"cmd\": \"node\", \"args\": [\"index.js\"], \"execution_order\": \"serial\"}]}}"))
 				} else if strings.Contains(r.URL.RequestURI(), "get") {
-					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": \"banana\"}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": \"banana\"}"))
 				} else if strings.Contains(r.URL.RequestURI(), "list") {
-					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": \"banana\"}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": \"banana\"}"))
 				} else if strings.Contains(r.URL.RequestURI(), "test-dc-error") {
 					w.WriteHeader(400)
-					fmt.Fprint(w, "{\"status\": 400, \"ok\": false, \"response\": \"banana\"}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 400, \"ok\": false, \"response\": \"banana\"}"))
 				}
 			} else if r.Method == "POST" {
 				if strings.Contains(r.URL.RequestURI(), "transaction_bulk") {
-					fmt.Fprint(w, "{\"status\": 201, \"ok\": true, \"response\": {\"201\": [\"banana\"], \"400\": [\"apple\"]}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 201, \"ok\": true, \"response\": {\"201\": [\"banana\"], \"400\": [\"apple\"]}}"))
 				} else if strings.Contains(r.URL.RequestURI(), "transaction-type") {
-					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"success\": true}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"success\": true}}"))
 				} else if strings.Contains(r.URL.RequestURI(), "transaction") {
-					fmt.Fprint(w, "{\"status\": 201, \"ok\": true, \"response\": {\"transaction_id\": \"banana\"}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 201, \"ok\": true, \"response\": {\"transaction_id\": \"banana\"}}"))
 				} else if strings.Contains(r.URL.RequestURI(), "contract") {
-					fmt.Fprint(w, "{\"status\": 202, \"ok\": true, \"response\": {\"success\": {\"dcrn\": \"SmartContract::L1::AtRest\", \"version\": \"3\", \"txn_type\": \"banana\", \"id\": \"banana-id\", \"status\": {}, \"image\": \"dragonchain/banana:1.0.0-dev\", \"cmd\": \"go\", \"args\": [\"run\"], \"execution_order\": \"serial\"}}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 202, \"ok\": true, \"response\": {\"success\": {\"dcrn\": \"SmartContract::L1::AtRest\", \"version\": \"3\", \"txn_type\": \"banana\", \"id\": \"banana-id\", \"status\": {}, \"image\": \"dragonchain/banana:1.0.0-dev\", \"cmd\": \"go\", \"args\": [\"run\"], \"execution_order\": \"serial\"}}}"))
 				}
 			} else if r.Method == "PUT" {
 				if strings.Contains(r.URL.RequestURI(), "contract") {
-					fmt.Fprint(w, "{\"status\": 202, \"ok\": true, \"response\": {\"success\": {\"dcrn\": \"SmartContract::L1::AtRest\", \"version\": \"1\", \"txn_type\": \"banana\", \"id\": \"banana-id\", \"status\": {}, \"image\": \"dragonchain/banana:1.0.0-dev\", \"cmd\": \"go\", \"args\": [\"run\"], \"execution_order\": \"serial\"}}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 202, \"ok\": true, \"response\": {\"success\": {\"dcrn\": \"SmartContract::L1::AtRest\", \"version\": \"1\", \"txn_type\": \"banana\", \"id\": \"banana-id\", \"status\": {}, \"image\": \"dragonchain/banana:1.0.0-dev\", \"cmd\": \"go\", \"args\": [\"run\"], \"execution_order\": \"serial\"}}}"))
 				} else if strings.Contains(r.URL.RequestURI(), "transaction-type") {
-					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"success\": true}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"success\": true}}"))
 				}
 			} else if r.Method == "DELETE" {
 				if strings.Contains(r.URL.RequestURI(), "contract") {
-					fmt.Fprint(w, "{\"status\": 202, \"ok\": true, \"response\": {\"success\": {\"dcrn\": \"SmartContract::L1::AtRest\", \"version\": \"1\", \"txn_type\": \"banana\", \"id\": \"banana-id\"}}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 202, \"ok\": true, \"response\": {\"success\": {\"dcrn\": \"SmartContract::L1::AtRest\", \"version\": \"1\", \"txn_type\": \"banana\", \"id\": \"banana-id\"}}}"))
 				} else if strings.Contains(r.URL.RequestURI(), "transaction-type") {
-					fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"success\": true}}")
+					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": {\"success\": true}}"))
 				}
 			}
 		}))
@@ -156,11 +162,20 @@ func TestDCError(t *testing.T) {
 }
 
 func TestGetSecret(t *testing.T) {
-	defer os.Remove("/tmp/sc-bananacoin-bananasecret")
+	defer func() {
+		err := os.Remove("/tmp/sc-bananacoin-bananasecret")
+		assert.NilError(t, err, "os.Remove should not return an error")
+	}()
 	file, err := os.Create("/tmp/sc-bananacoin-bananasecret")
-	defer file.Close()
-	file.WriteString("hello world")
-	os.Setenv("SMART_CONTRACT_ID", "bananacoin")
+	assert.NilError(t, err, "os.Create should not return an error")
+	defer func() {
+		err := file.Close()
+		assert.NilError(t, err, "file.Close should not return an error")
+	}()
+	_, err = file.WriteString("hello world")
+	assert.NilError(t, err, "file.WriteString should not return an error")
+	err = os.Setenv("SMART_CONTRACT_ID", "bananacoin")
+	assert.NilError(t, err, "os.Setenv should not return an error")
 	_, client := setUp()
 	resp, err := client.GetSecret("/tmp/sc-bananacoin-bananasecret", "")
 	assert.NilError(t, err, "GetSecret should not return an error")
@@ -168,9 +183,11 @@ func TestGetSecret(t *testing.T) {
 }
 
 func TestGetSecretError(t *testing.T) {
-	os.Setenv("SMART_CONTRACT_ID", "bananacoin")
+	err := os.Setenv("SMART_CONTRACT_ID", "bananacoin")
+	assert.NilError(t, err, "os.Setenv should not return an error")
 	_, client := setUp()
-	_, err := client.GetSecret("bananasecret", "")
+	_, err = client.GetSecret("bananasecret", "")
+	assert.NilError(t, err, "client.GetSecret should not return an error")
 	assert.Error(t, err, "open /var/openfaas/secrets/sc-bananacoin-bananasecret: no such file or directory")
 }
 
@@ -205,11 +222,13 @@ func TestQueryContracts(t *testing.T) {
 	query, _ := NewQuery("banana", "fruit", 10, 10)
 	_, client := setUp()
 	resp, err := client.QueryContracts(query)
+	assert.NilError(t, err, "QueryContracts should not return an error")
 	// The Node and Python SDKs return queries under the key response.results as an array.
 	// For consistency, the overhead of managing this difference in golang is passed to the user.
 	raw, _ := json.Marshal(resp.Response.(map[string]interface{})["results"])
 	var contracts []Contract
-	json.Unmarshal(raw, &contracts)
+	err = json.Unmarshal(raw, &contracts)
+	assert.NilError(t, err, "json.Unmarshal should not return an error")
 	expected := Contract{
 		TxnType:    "banana",
 		ContractID: "banana-sc-id",
@@ -307,7 +326,8 @@ func TestPostContract(t *testing.T) {
 	assert.NilError(t, err, "PostContract should not return an error")
 	raw, _ := json.Marshal(resp.Response.(map[string]interface{})["success"])
 	var contractResp Contract
-	json.Unmarshal(raw, &contractResp)
+	err = json.Unmarshal(raw, &contractResp)
+	assert.NilError(t, err, "json.Unmarshal should not return an error")
 	expected := Contract{
 		TxnType:        "banana",
 		ContractID:     "banana-id",
@@ -352,7 +372,8 @@ func TestUpdateContract(t *testing.T) {
 	assert.NilError(t, err, "UpdateContract should not return an error")
 	raw, _ := json.Marshal(resp.Response.(map[string]interface{})["success"])
 	var contractResp Contract
-	json.Unmarshal(raw, &contractResp)
+	err = json.Unmarshal(raw, &contractResp)
+	assert.NilError(t, err, "json.Unmarshal should not return an error")
 	expected := Contract{
 		TxnType:        "banana",
 		ContractID:     "banana-id",
@@ -464,10 +485,10 @@ func TestPostTransactionRequestFails(t *testing.T) {
 func TestPostTransactionBulk(t *testing.T) {
 	_, client := setUp()
 	txn := []*PostTransaction{
-		&PostTransaction{
+		{
 			Version: "latest",
 			TxnType: "banana",
-		}, &PostTransaction{
+		}, {
 			Version: "latest",
 			TxnType: "banana",
 		},
@@ -484,7 +505,7 @@ func TestPostTransactionBulkSizeExceeded(t *testing.T) {
 		TxnType: "banana",
 		Payload: make(map[string]interface{}),
 	}
-	txns := []*PostTransaction{}
+	txns := make([]*PostTransaction, 0)
 	for i := 0; i < 260; i++ {
 		txns = append(txns, txn)
 	}
@@ -498,10 +519,10 @@ func TestPostTransactionBulkRequestFails(t *testing.T) {
 	fakeHTTPClient := clientMock{}
 	client.OverrideCredentials(nil, "", fakeHTTPClient)
 	txn := []*PostTransaction{
-		&PostTransaction{
+		{
 			Version: "latest",
 			TxnType: "banana",
-		}, &PostTransaction{
+		}, {
 			Version: "latest",
 			TxnType: "banana",
 		},
@@ -520,9 +541,10 @@ func TestQueryBlocks(t *testing.T) {
 	// For consistency, the overhead of managing this difference in golang is passed to the user.
 	raw, _ := json.Marshal(resp.Response.(map[string]interface{})["results"])
 	var blocks []Block
-	json.Unmarshal(raw, &blocks)
+	err = json.Unmarshal(raw, &blocks)
+	assert.NilError(t, err, "json.Unmarshal should not return an error")
 	expected := []Block{
-		Block{
+		{
 			Version: "1",
 			DCRN:    "Block::L1::AtRest",
 			Header: BlockHeader{
@@ -556,8 +578,11 @@ func TestQueryBlocksRequestFails(t *testing.T) {
 func TestGetBlock(t *testing.T) {
 	_, client := setUp()
 	resp, err := client.GetBlock("banana")
-	block := resp.Response.(Block)
+	if resp == nil {
+		t.Errorf("did not expect nil response")
+	}
 	assert.NilError(t, err, "GetBlock should not return an error")
+	block := resp.Response.(Block)
 	expected := Block{
 		Version: "1",
 		DCRN:    "Block::L1::AtRest",
@@ -594,7 +619,7 @@ func TestGetVerification(t *testing.T) {
 	verification := resp.Response.(Verification)
 	expected := Verification{
 		L2: []Block{
-			Block{
+			{
 				Version: "1",
 				DCRN:    "Block::L2::AtRest",
 				Proof:   BlockProof{Scheme: "trust", Proof: "proofnana"},
@@ -645,7 +670,8 @@ func TestQueryTransactions(t *testing.T) {
 	// For consistency, the overhead of managing this difference in golang is passed to the user.
 	raw, _ := json.Marshal(resp.Response.(map[string]interface{})["results"])
 	var txn []Transaction
-	json.Unmarshal(raw, &txn)
+	err = json.Unmarshal(raw, &txn)
+	assert.NilError(t, err, "json.Unmarshal should not return an error")
 	expected := Transaction{
 		Version: "1",
 		DCRN:    "Transaction::L1::FullTransaction",
@@ -685,7 +711,8 @@ func TestGetSCHeap(t *testing.T) {
 
 func TestGetSCHeapNoID(t *testing.T) {
 	_, client := setUp()
-	os.Setenv("SMART_CONTRACT_ID", "bananaContract")
+	err := os.Setenv("SMART_CONTRACT_ID", "bananaContract")
+	assert.NilError(t, err, "os.Setenv should not return an error")
 	resp, err := client.GetSCHeap("", "apple")
 	assert.NilError(t, err, "GetSCHeap should not return an error")
 	assert.Equal(t, resp.Response, "banana")
@@ -716,7 +743,8 @@ func TestListSCHeap(t *testing.T) {
 
 func TestListSCHeapNoID(t *testing.T) {
 	_, client := setUp()
-	os.Setenv("SMART_CONTRACT_ID", "bananaContract")
+	err := os.Setenv("SMART_CONTRACT_ID", "bananaContract")
+	assert.NilError(t, err, "os.Setenv should not return an error")
 	resp, err := client.ListSCHeap("", "apple")
 	assert.NilError(t, err, "ListSCHeap should not return an error")
 	assert.Equal(t, resp.Response, "banana")
@@ -767,7 +795,8 @@ func TestListTransactionTypes(t *testing.T) {
 	// For consistency, the overhead of managing this difference in golang is passed to the user.
 	raw, _ := json.Marshal(resp.Response.(map[string]interface{})["transaction_types"])
 	var txnTypes []TransactionType
-	json.Unmarshal(raw, &txnTypes)
+	err = json.Unmarshal(raw, &txnTypes)
+	assert.NilError(t, err, "json.Unmarshal should not return an error")
 	expected := TransactionType{
 		Version:       "1",
 		Type:          "banana",
@@ -788,7 +817,7 @@ func TestListTransactionTypesRequestFails(t *testing.T) {
 func TestUpdateTransactionType(t *testing.T) {
 	_, client := setUp()
 	indexes := []CustomIndexStructure{
-		CustomIndexStructure{
+		{
 			Key:  "skeleton_key",
 			Path: "any/door",
 		},
@@ -805,7 +834,7 @@ func TestUpdateTransactionTypeRequestFails(t *testing.T) {
 	fakeHTTPClient := clientMock{}
 	client.OverrideCredentials(nil, "", fakeHTTPClient)
 	indexes := []CustomIndexStructure{
-		CustomIndexStructure{
+		{
 			Key:  "skeleton_key",
 			Path: "any/door",
 		},
@@ -818,7 +847,7 @@ func TestUpdateTransactionTypeRequestFails(t *testing.T) {
 func TestRegisterTransactionType(t *testing.T) {
 	_, client := setUp()
 	indexes := []CustomIndexStructure{
-		CustomIndexStructure{
+		{
 			Key:  "skeleton_key",
 			Path: "any/door",
 		},
@@ -835,7 +864,7 @@ func TestRegisterTransactionTypeRequestFails(t *testing.T) {
 	fakeHTTPClient := clientMock{}
 	client.OverrideCredentials(nil, "", fakeHTTPClient)
 	indexes := []CustomIndexStructure{
-		CustomIndexStructure{
+		{
 			Key:  "skeleton_key",
 			Path: "any/door",
 		},
