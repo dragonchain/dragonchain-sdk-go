@@ -13,21 +13,22 @@ package dragonchain
 
 // ContractConfiguration defines the structure of a request to create a new smart contract.
 type ContractConfiguration struct {
-	TxnType        string                 `json:"txn_type"`
-	ExecutionOrder string                 `json:"execution_order"`
-	Image          string                 `json:"image"`
-	Cmd            string                 `json:"cmd"`
-	Args           []string               `json:"args"`
-	Env            []string               `json:"env"`
-	Secrets        map[string]interface{} `json:"secrets"`
-	Seconds        int                    `json:"seconds"`
-	Cron           string                 `json:"cron"`
-	Auth           string                 `json:"auth"`
+	TransactionType           string                 `json:"txn_type"`
+	Image                     string                 `json:"image"`
+	Cmd                       string                 `json:"cmd"`
+	Args                      []string               `json:"args"`
+	ExecutionOrder            string                 `json:"execution_order"`
+	Enabled                   bool                   `json:"enabled"`
+	EnvironmentVariables      []string               `json:"env"`
+	Secrets                   map[string]interface{} `json:"secrets"`
+	ScheduleIntervalInSeconds int                    `json:"seconds"`
+	CronExpression            string                 `json:"cron"`
+	RegistryCredentials       string                 `json:"auth"`
 }
 
 // Contract defines the structure of a deployed smart contract.
 type Contract struct {
-	TxnType         string                 `json:"txn_type"`
+	TransactionType string                 `json:"txn_type"`
 	ContractID      string                 `json:"id"`
 	Status          ContractStatus         `json:"status"`
 	Image           string                 `json:"image"`
