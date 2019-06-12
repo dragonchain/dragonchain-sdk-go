@@ -97,6 +97,10 @@ func setUp(injectedClient *clientMock) (*httptest.Server, *Client) {
 					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": \"banana\"}"))
 				} else if strings.Contains(r.URL.RequestURI(), "list") {
 					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": \"banana\"}"))
+				} else if strings.Contains(r.URL.RequestURI(), "api-key/") {
+					mustWrite(fmt.Fprint(w, "{\"id\": \"YOQZNKYTUWTQ\", \"root\": true, \"registration_time\": 0}"))
+				} else if strings.Contains(r.URL.RequestURI(), "api-key") {
+					mustWrite(fmt.Fprint(w, "[{\"id\": \"YOQZNKYTUWTQ\", \"root\": true, \"registration_time\": 0}]"))
 				} else if strings.Contains(r.URL.RequestURI(), "test-dc-error") {
 					w.WriteHeader(400)
 					mustWrite(fmt.Fprint(w, "{\"status\": 400, \"ok\": false, \"response\": \"banana\"}"))
@@ -112,6 +116,8 @@ func setUp(injectedClient *clientMock) (*httptest.Server, *Client) {
 					mustWrite(fmt.Fprint(w, "{\"transaction_id\": \"banana\"}"))
 				} else if strings.Contains(r.URL.RequestURI(), "contract") {
 					mustWrite(fmt.Fprint(w, "{\"success\": {\"dcrn\": \"SmartContract::L1::AtRest\", \"version\": \"3\", \"txn_type\": \"banana\", \"id\": \"banana-id\", \"status\": {}, \"image\": \"dragonchain/banana:1.0.0-dev\", \"cmd\": \"go\", \"args\": [\"run\"], \"execution_order\": \"serial\"}}"))
+				} else if strings.Contains(r.URL.RequestURI(), "api-key") {
+					mustWrite(fmt.Fprint(w, "{\"key\": \"N4UuMzqFRt183ajXjR8P7goKNBqwRZ7ILKHUIcfNquu\", \"id\": \"VIUBMEGJKVRY\", \"registration_time\": 1560362013}"))
 				}
 			} else if r.Method == "PUT" {
 				if strings.Contains(r.URL.RequestURI(), "contract") {
@@ -123,6 +129,8 @@ func setUp(injectedClient *clientMock) (*httptest.Server, *Client) {
 				if strings.Contains(r.URL.RequestURI(), "contract") {
 					mustWrite(fmt.Fprint(w, "{\"success\": {\"dcrn\": \"SmartContract::L1::AtRest\", \"version\": \"1\", \"txn_type\": \"banana\", \"id\": \"banana-id\"}}"))
 				} else if strings.Contains(r.URL.RequestURI(), "transaction-type") {
+					mustWrite(fmt.Fprint(w, "{\"success\": true}"))
+				} else if strings.Contains(r.URL.RequestURI(), "api-key") {
 					mustWrite(fmt.Fprint(w, "{\"success\": true}"))
 				}
 			}
@@ -917,4 +925,83 @@ func TestCreateEthereumTransactionBadNetwork(t *testing.T) {
 	}
 	_, err := client.CreateEthereumTransaction(&ethTransaction)
 	assert.Error(t, err, "ethereum transactions can only be created on supported networks: map[ETC_MAINNET:true ETC_MORDEN:true ETH_MAINNET:true ETH_ROPSTEN:true]")
+}
+
+func TestGetAPIKey(t *testing.T) {
+	_, client := setUp(nil)
+	resp, err := client.GetAPIKey("banana")
+	assert.NilError(t, err, "GetAPIKey should not return an error")
+	expected := map[string]interface{}{
+		"id":                "YOQZNKYTUWTQ",
+		"root":              true,
+		"registration_time": float64(0),
+	}
+	assert.DeepEqual(t, resp.Response, expected)
+}
+
+func TestGetAPIKeyFails(t *testing.T) {
+	fakeHTTPClient := &clientMock{}
+	_, client := setUp(fakeHTTPClient)
+	resp, err := client.GetAPIKey("banana")
+	assert.Error(t, err, "this is a test error in Client.Do")
+	assert.Assert(t, resp == nil)
+}
+
+func TestListAPIKeys(t *testing.T) {
+	_, client := setUp(nil)
+	resp, err := client.ListAPIKeys()
+	assert.NilError(t, err, "ListAPIKeys should not return an error")
+	keys := resp.Response.(map[string]interface{})["keys"]
+	expected := map[string]interface{}{
+		"id":                "YOQZNKYTUWTQ",
+		"root":              true,
+		"registration_time": float64(0),
+	}
+	assert.DeepEqual(t, keys.([]map[string]interface{})[0], expected)
+}
+
+func TestListAPIKeysFails(t *testing.T) {
+	fakeHTTPClient := &clientMock{}
+	_, client := setUp(fakeHTTPClient)
+	resp, err := client.ListAPIKeys()
+	assert.Error(t, err, "this is a test error in Client.Do")
+	assert.Assert(t, resp == nil)
+}
+
+func TestCreateAPIKey(t *testing.T) {
+	_, client := setUp(nil)
+	resp, err := client.CreateAPIKey()
+	expected := map[string]interface{}{
+		"key":               "N4UuMzqFRt183ajXjR8P7goKNBqwRZ7ILKHUIcfNquu",
+		"id":                "VIUBMEGJKVRY",
+		"registration_time": float64(1560362013),
+	}
+	assert.NilError(t, err, "CreateAPIKey should not return an error")
+	assert.DeepEqual(t, resp.Response, expected)
+}
+
+func TestCreateAPIKeyFails(t *testing.T) {
+	fakeHTTPClient := &clientMock{}
+	_, client := setUp(fakeHTTPClient)
+	resp, err := client.CreateAPIKey()
+	assert.Error(t, err, "this is a test error in Client.Post")
+	assert.Assert(t, resp == nil)
+}
+
+func TestDeleteAPIKey(t *testing.T) {
+	_, client := setUp(nil)
+	resp, err := client.DeleteAPIKey("banana")
+	expected := map[string]bool{
+		"success": true,
+	}
+	assert.NilError(t, err, "DeleteAPIKey should not return an error")
+	assert.DeepEqual(t, resp.Response, expected)
+}
+
+func TestDeleteAPIKeyFails(t *testing.T) {
+	fakeHTTPClient := &clientMock{}
+	_, client := setUp(fakeHTTPClient)
+	resp, err := client.DeleteAPIKey("banana")
+	assert.Error(t, err, "this is a test error in Client.Do")
+	assert.Assert(t, resp == nil)
 }

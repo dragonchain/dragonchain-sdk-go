@@ -713,6 +713,92 @@ func (client *Client) CreateEthereumTransaction(ethTransaction *EthereumTransact
 	return &chainResp, err
 }
 
+// GetAPIKey returns an HMAC API key.
+func (client *Client) GetAPIKey(keyID string) (*Response, error) {
+	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, "/api-key", keyID)
+
+	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.performRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	var key map[string]interface{}
+	if err := json.Unmarshal(resp.Response.([]byte), &key); err != nil {
+		return nil, err
+	}
+	resp.Response = key
+	return resp, err
+}
+
+// ListAPIKeys for a chain.
+func (client *Client) ListAPIKeys() (*Response, error) {
+	uri := fmt.Sprintf("%s%s", client.apiBaseURL, "/api-key")
+
+	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.performRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	var keys [](map[string]interface{})
+	if err := json.Unmarshal(resp.Response.([]byte), &keys); err != nil {
+		return nil, err
+	}
+	resp.Response = map[string]interface{}{
+		"keys": keys,
+	}
+	return resp, err
+}
+
+// CreateAPIKey to access chain with.
+func (client *Client) CreateAPIKey() (*Response, error) {
+	uri := fmt.Sprintf("%s%s", client.apiBaseURL, "/api-key")
+	resp, err := client.httpClient.Post(uri, "content/json", bytes.NewBuffer(nil))
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	var chainResp Response
+	bytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	var key map[string]interface{}
+	if err := json.Unmarshal(bytes, &key); err != nil {
+		return nil, err
+	}
+	chainResp.Response = key
+	chainResp.Status = resp.StatusCode
+	if 200 <= resp.StatusCode && resp.StatusCode < 300 {
+		chainResp.OK = true
+	}
+	return &chainResp, err
+}
+
+// DeleteAPIKey from chain.
+func (client *Client) DeleteAPIKey(keyID string) (*Response, error) {
+	uri := fmt.Sprintf("%s%s", client.apiBaseURL, "/api-key")
+	req, err := http.NewRequest("DELETE", uri, bytes.NewBuffer([]byte("")))
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.performRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	var success map[string]bool
+	if err := json.Unmarshal(resp.Response.([]byte), &success); err != nil {
+		return nil, err
+	}
+	resp.Response = success
+	return resp, err
+}
+
 // setHeaders sets the http headers of a request to the chain with proper authorization.
 func (client *Client) setHeaders(req *http.Request, httpVerb, path, contentType, content string) error {
 	if client.creds == nil {
