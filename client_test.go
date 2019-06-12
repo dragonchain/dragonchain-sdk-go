@@ -71,6 +71,8 @@ func setUp(injectedClient *clientMock) (*httptest.Server, *Client) {
 			if r.Method == "GET" {
 				if strings.Contains(r.URL.RequestURI(), "transaction-types") {
 					mustWrite(fmt.Fprint(w, "{\"transaction_types\": [{\"version\": \"1\", \"txn_type\": \"banana\", \"custom_indexes\": [], \"contract_id\": false}]}"))
+				} else if strings.Contains(r.URL.RequestURI(), "public-blockchain-address") {
+					mustWrite(fmt.Fprint(w, "{\"eth_mainnet\": \"0xd409258c7B4a26510B5892bE80AFbdB122c35968\"}"))
 				} else if strings.Contains(r.URL.RequestURI(), "transaction-type") {
 					mustWrite(fmt.Fprint(w, "{\"version\": \"1\", \"txn_type\": \"banana\", \"custom_indexes\": [], \"contract_id\": false}"))
 				} else if strings.Contains(r.URL.RequestURI(), "transaction") && r.URL.RawQuery != "" {
@@ -104,6 +106,8 @@ func setUp(injectedClient *clientMock) (*httptest.Server, *Client) {
 					mustWrite(fmt.Fprint(w, "{\"201\": [\"banana\"], \"400\": [\"apple\"]}"))
 				} else if strings.Contains(r.URL.RequestURI(), "transaction-type") {
 					mustWrite(fmt.Fprint(w, "{\"success\": true}"))
+				} else if strings.Contains(r.URL.RequestURI(), "public-blockchain-transaction") {
+					mustWrite(fmt.Fprint(w, "{\"signed\": \"0xf8638084040d6e5c82ea6094e9f36fd8428723cf08b7fd50e084fc61aa378f20018029a063f6630df48a42f138e592714c3cef4c5e70f6a1ec78d9350072d918e1203102a00c264fada9f62bc653c4e3fe807fd315274aaa8abd0626a7a51758be56a3b270\"}"))
 				} else if strings.Contains(r.URL.RequestURI(), "transaction") {
 					mustWrite(fmt.Fprint(w, "{\"transaction_id\": \"banana\"}"))
 				} else if strings.Contains(r.URL.RequestURI(), "contract") {
@@ -858,4 +862,59 @@ func TestDeleteTransactionTypeRequestFails(t *testing.T) {
 	resp, err := client.DeleteTransactionType("banana")
 	assert.Error(t, err, "this is a test error in Client.Do")
 	assert.Assert(t, resp == nil)
+}
+
+func TestGetPublicBlockchainAddress(t *testing.T) {
+	_, client := setUp(nil)
+	resp, err := client.GetPublicBlockchainAddress()
+	assert.NilError(t, err, "GetPublicBlockchainAddress should not return an error")
+	addresses := make(map[string]string)
+	addresses["eth_mainnet"] = "0xd409258c7B4a26510B5892bE80AFbdB122c35968"
+	assert.DeepEqual(t, resp.Response, addresses)
+}
+
+func TestGetPublicBlockchainAddressFails(t *testing.T) {
+	fakeHTTPClient := &clientMock{}
+	_, client := setUp(fakeHTTPClient)
+	resp, err := client.GetPublicBlockchainAddress()
+	assert.Error(t, err, "this is a test error in Client.Do")
+	assert.Assert(t, resp == nil)
+}
+
+func TestCreateBitcoinTransaction(t *testing.T) {
+	_, client := setUp(nil)
+	btcTransaction := BitcoinTransaction{
+		Network: "BTC_TESTNET3",
+	}
+	resp, err := client.CreateBitcoinTransaction(&btcTransaction)
+	assert.NilError(t, err, "CreateBitcoinTransaction should not return an error")
+	assert.DeepEqual(t, resp.Response.(map[string]string)["signed"], "0xf8638084040d6e5c82ea6094e9f36fd8428723cf08b7fd50e084fc61aa378f20018029a063f6630df48a42f138e592714c3cef4c5e70f6a1ec78d9350072d918e1203102a00c264fada9f62bc653c4e3fe807fd315274aaa8abd0626a7a51758be56a3b270")
+}
+
+func TestCreateBitcoinTransactionBadNetwork(t *testing.T) {
+	_, client := setUp(nil)
+	btcTransaction := BitcoinTransaction{
+		Network: "BTC_BANANA",
+	}
+	_, err := client.CreateBitcoinTransaction(&btcTransaction)
+	assert.Error(t, err, "bitcoin transactions can only be created on supported networks: map[BTC_MAINNET:true BTC_TESTNET3:true]")
+}
+
+func TestCreateEthereumTransaction(t *testing.T) {
+	_, client := setUp(nil)
+	btcTransaction := EthereumTransaction{
+		Network: "ETH_ROPSTEN",
+	}
+	resp, err := client.CreateEthereumTransaction(&btcTransaction)
+	assert.NilError(t, err, "CreateEthereumTransaction should not return an error")
+	assert.DeepEqual(t, resp.Response.(map[string]string)["signed"], "0xf8638084040d6e5c82ea6094e9f36fd8428723cf08b7fd50e084fc61aa378f20018029a063f6630df48a42f138e592714c3cef4c5e70f6a1ec78d9350072d918e1203102a00c264fada9f62bc653c4e3fe807fd315274aaa8abd0626a7a51758be56a3b270")
+}
+
+func TestCreateEthereumTransactionBadNetwork(t *testing.T) {
+	_, client := setUp(nil)
+	ethTransaction := EthereumTransaction{
+		Network: "ETH_BANANA",
+	}
+	_, err := client.CreateEthereumTransaction(&ethTransaction)
+	assert.Error(t, err, "ethereum transactions can only be created on supported networks: map[ETC_MAINNET:true ETC_MORDEN:true ETH_MAINNET:true ETH_ROPSTEN:true]")
 }

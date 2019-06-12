@@ -618,6 +618,11 @@ func (client *Client) GetPublicBlockchainAddress() (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
+	var addresses map[string]string
+	if err := json.Unmarshal(resp.Response.([]byte), &addresses); err != nil {
+		return nil, err
+	}
+	resp.Response = addresses
 	return resp, err
 }
 
@@ -646,14 +651,20 @@ func (client *Client) CreateBitcoinTransaction(btcTransaction *BitcoinTransactio
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		err = resp.Body.Close()
-	}()
-	decoder := json.NewDecoder(resp.Body)
+	defer resp.Body.Close()
 	var chainResp Response
-	err = decoder.Decode(&chainResp)
+	bytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
+	}
+	var signed map[string]string
+	if err := json.Unmarshal(bytes, &signed); err != nil {
+		return nil, err
+	}
+	chainResp.Response = signed
+	chainResp.Status = resp.StatusCode
+	if 200 <= resp.StatusCode && resp.StatusCode < 300 {
+		chainResp.OK = true
 	}
 	return &chainResp, err
 }
@@ -684,14 +695,20 @@ func (client *Client) CreateEthereumTransaction(ethTransaction *EthereumTransact
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		err = resp.Body.Close()
-	}()
-	decoder := json.NewDecoder(resp.Body)
+	defer resp.Body.Close()
 	var chainResp Response
-	err = decoder.Decode(&chainResp)
+	bytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
+	}
+	var signed map[string]string
+	if err := json.Unmarshal(bytes, &signed); err != nil {
+		return nil, err
+	}
+	chainResp.Response = signed
+	chainResp.Status = resp.StatusCode
+	if 200 <= resp.StatusCode && resp.StatusCode < 300 {
+		chainResp.OK = true
 	}
 	return &chainResp, err
 }
