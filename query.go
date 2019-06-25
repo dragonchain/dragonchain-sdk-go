@@ -23,12 +23,11 @@ type Query struct {
 	Limit  int    `json:"limit"`
 }
 
-var (
-	// ErrInvalidOffset is thrown when a negative offset is provided.
-	ErrInvalidOffset = errors.New("invalid offset given, must be positive int")
-	// ErrInvalidLimit is thrown when a negative limit is provided.
-	ErrInvalidLimit = errors.New("invalid limit given, must be positive int")
-)
+// ErrInvalidOffset is thrown when a negative offset is provided.
+var ErrInvalidOffset = errors.New("invalid offset given, must be positive int")
+
+// ErrInvalidLimit is thrown when a negative limit is provided.
+var ErrInvalidLimit = errors.New("invalid limit given, must be positive int")
 
 // NewQuery constructs a Query based on provided parameters.
 func NewQuery(query, sort string, offset int, limit int) (*Query, error) {

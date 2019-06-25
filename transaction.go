@@ -11,23 +11,23 @@
 
 package dragonchain
 
-// PostTransaction defines the transaction schema for dragonchain.
-type PostTransaction struct {
-	Version string                 `json:"version"`
-	TxnType string                 `json:"txn_type"`
-	Tag     string                 `json:"tag"`
-	Payload map[string]interface{} `json:"payload"`
+// CreateTransaction defines the transaction schema for dragonchain.
+type CreateTransaction struct {
+	Version         string                 `json:"version"`
+	TransactionType string                 `json:"txn_type"`
+	Tag             string                 `json:"tag"`
+	Payload         map[string]interface{} `json:"payload"`
 }
 
 // Header defines the HTTP headers required for dragonchain authentication
 type Header struct {
-	TxnType   string `json:"txn_type"`
-	DcID      string `json:"dc_id"`
-	TxnID     string `json:"txn_id"`
-	BlockID   string `json:"block_id"`
-	TimeStamp string `json:"timestamp"`
-	Tag       string `json:"tag"`
-	Invoker   string `json:"invoker"`
+	TransactionType string `json:"txn_type"`
+	DcID            string `json:"dc_id"`
+	TxnID           string `json:"txn_id"`
+	BlockID         string `json:"block_id"`
+	TimeStamp       string `json:"timestamp"`
+	Tag             string `json:"tag"`
+	Invoker         string `json:"invoker"`
 }
 
 // Proof defines the proof object returned by L1 dragonchains.
@@ -49,4 +49,82 @@ type Transaction struct {
 type GetSmartContractHeap struct {
 	SCName string `json:"sc_name"`
 	Key    string `json:"key"`
+}
+
+// TransactionType defines the properties of a valid Dragonchain transaction type.
+type TransactionType struct {
+	Version       string                 `json:"version"`
+	Type          string                 `json:"txn_type"`
+	CustomIndexes []CustomIndexStructure `json:"custom_indexes"`
+	IsContract    bool                   `json:"is_contract"`
+}
+
+// CustomIndexStructure defines the valid format of custom indexes on a transaction type.
+type CustomIndexStructure struct {
+	Key  string `json:"key"`
+	Path string `json:"path"`
+}
+
+// BitcoinTransaction represents a transaction on a bitcoin chain.
+type BitcoinTransaction struct {
+	Network         string           `json:"network"`
+	SatoshisPerByte float32          `json:"satoshisPerByte,omitempty"`
+	Data            string           `json:"data,omitempty"`
+	ChangeAddress   string           `json:"changeAddress,omitempty"`
+	Outputs         []BitcoinOutputs `json:"outputs,omitempty"`
+}
+
+type bitcoinBackEndTransaction struct {
+	Network     string
+	Transaction bitcoinTransactionWithoutNetwork
+}
+
+type bitcoinTransactionWithoutNetwork struct {
+	SatoshisPerByte float32          `json:"satoshisPerByte,omitempty"`
+	Data            string           `json:"data,omitempty"`
+	ChangeAddress   string           `json:"changeAddress,omitempty"`
+	Outputs         []BitcoinOutputs `json:"outputs,omitempty"`
+}
+
+// EthereumTransaction represents a transaction on an ethereum chain.
+type EthereumTransaction struct {
+	Network  string `json:"network"`
+	To       string `json:"to"`
+	Value    string `json:"value"`
+	Data     string `json:"data,omitempty"`
+	GasPrice string `json:"gasPrice,omitempty"`
+	Gas      string `json:"gas,omitempty"`
+}
+
+type ethereumBackEndTransaction struct {
+	Network     string `json:"network"`
+	Transaction ethereumTransactionWithoutNetwork
+}
+
+type ethereumTransactionWithoutNetwork struct {
+	To       string `json:"to"`
+	Value    string `json:"value"`
+	Data     string `json:"data,omitempty"`
+	GasPrice string `json:"gasPrice,omitempty"`
+	Gas      string `json:"gas,omitempty"`
+}
+
+// BitcoinNetworks supported for interchain capabilities
+var BitcoinNetworks = map[string]bool{
+	"BTC_MAINNET":  true,
+	"BTC_TESTNET3": true,
+}
+
+// EthereumNetworks supported for interchain capabilities
+var EthereumNetworks = map[string]bool{
+	"ETH_MAINNET": true,
+	"ETH_ROPSTEN": true,
+	"ETC_MAINNET": true,
+	"ETC_MORDEN":  true,
+}
+
+// BitcoinOutputs are optional outputs for a bitcoin transaction.
+type BitcoinOutputs struct {
+	ScriptPubKey string  `json:"scriptPubKey"`
+	Value        float32 `json:"value,omitempty"`
 }

@@ -25,13 +25,11 @@ import (
 	"golang.org/x/crypto/sha3"
 )
 
-var (
-	// ErrUnsupportedHashAlgo is thrown when an unsupported hash method is provided.
-	ErrUnsupportedHashAlgo = errors.New("hash method not supported")
+// ErrUnsupportedHashAlgo is thrown when an unsupported hash method is provided.
+var ErrUnsupportedHashAlgo = errors.New("hash method not supported")
 
-	// ErrNoCredentials is thrown if no credentials file can be found.
-	ErrNoCredentials = errors.New("no credentials found")
-)
+// ErrNoCredentials is thrown if no credentials file can be found.
+var ErrNoCredentials = errors.New("no credentials found")
 
 // Supported hash functions
 const (
@@ -197,11 +195,6 @@ func (creds *Credentials) createHmac(secret, message string) []byte {
 	h := hmac.New(creds.hashFunc, []byte(secret))
 	h.Write([]byte(message))
 	return h.Sum(nil)
-}
-
-// CompareHmac returns true if the hmac provided matches the current chain's signature, else false.
-func (creds *Credentials) CompareHmac(hmacBytes []byte, secret, message string) bool {
-	return hmac.Equal(hmacBytes, creds.createHmac(secret, message))
 }
 
 // GetDragonchainID returns the current chain's ID.

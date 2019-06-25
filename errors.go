@@ -7,12 +7,11 @@ import (
 	"net/http"
 )
 
-var (
-	// ErrDCTimeout is thrown when the chain API returns a timeout.
-	ErrDCTimeout = errors.New("chain api returned 408 timeout request")
-	// ErrMaxBulkSizeExceeded is thrown when bulk requests exceed MaxBulkPutSize.
-	ErrMaxBulkSizeExceeded = errors.New("too many transactions. transaction count can not be greater than MaxBulkPutSize")
-)
+// ErrDCTimeout is thrown when the chain API returns a timeout.
+var ErrDCTimeout = errors.New("chain api returned 408 timeout request")
+
+// ErrMaxBulkSizeExceeded is thrown when bulk requests exceed MaxBulkPutSize.
+var ErrMaxBulkSizeExceeded = errors.New("too many transactions. transaction count can not be greater than MaxBulkPutSize")
 
 // ErrFailedRequest defines the structure of an error returned by the chain.
 type ErrFailedRequest struct {
