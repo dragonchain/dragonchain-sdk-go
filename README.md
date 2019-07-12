@@ -6,7 +6,7 @@ Talk to your dragonchain.
 
 These docs are auto-generated.
 
-* [Godoc](https://godoc.org/github.com/dragonchain-inc/dragonchain-sdk-go)
+- [Godoc](https://godoc.org/github.com/dragonchain-inc/dragonchain-sdk-go)
 
 ### Installation
 
