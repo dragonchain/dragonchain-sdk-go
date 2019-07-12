@@ -756,9 +756,13 @@ func (client *Client) ListAPIKeys() (*Response, error) {
 }
 
 // CreateAPIKey to access chain with.
-func (client *Client) CreateAPIKey() (*Response, error) {
+func (client *Client) CreateAPIKey(configuration *APIKeyConfiguration) (*Response, error) {
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, "/api-key")
-	resp, err := client.httpClient.Post(uri, "content/json", bytes.NewBuffer(nil))
+	b, err := json.Marshal(configuration)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.httpClient.Post(uri, "content/json", bytes.NewBuffer(b))
 	if err != nil {
 		return nil, err
 	}
@@ -768,7 +772,7 @@ func (client *Client) CreateAPIKey() (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	var key map[string]interface{}
+	var key APIKey
 	if err := json.Unmarshal(bytes, &key); err != nil {
 		return nil, err
 	}
@@ -778,6 +782,31 @@ func (client *Client) CreateAPIKey() (*Response, error) {
 		chainResp.OK = true
 	}
 	return &chainResp, err
+}
+
+// UpdateAPIKey to update api key nickname
+func (client *Client) UpdateAPIKey(KeyID string, configuration *APIKeyConfiguration) (*Response, error) {
+	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, "/api-key", KeyID)
+	b, err := json.Marshal(configuration)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", uri, bytes.NewBuffer(b))
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.performRequest(req)
+	if err != nil {
+		return nil, err
+	}
+	var success map[string]bool
+	if err := json.Unmarshal(resp.Response.([]byte), &success); err != nil {
+		return nil, err
+	}
+	resp.Response = success
+	return resp, err
 }
 
 // DeleteAPIKey from chain.
