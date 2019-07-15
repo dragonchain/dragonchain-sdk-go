@@ -725,7 +725,7 @@ func (client *Client) GetAPIKey(keyID string) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	var key map[string]interface{}
+	var key APIKey
 	if err := json.Unmarshal(resp.Response.([]byte), &key); err != nil {
 		return nil, err
 	}
@@ -745,7 +745,7 @@ func (client *Client) ListAPIKeys() (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	var keys [](map[string]interface{})
+	var keys []APIKey
 	if err := json.Unmarshal(resp.Response.([]byte), &keys); err != nil {
 		return nil, err
 	}

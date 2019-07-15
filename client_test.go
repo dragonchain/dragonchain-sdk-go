@@ -98,9 +98,9 @@ func setUp(injectedClient *clientMock) (*httptest.Server, *Client) {
 				} else if strings.Contains(r.URL.RequestURI(), "list") {
 					mustWrite(fmt.Fprint(w, "{\"status\": 200, \"ok\": true, \"response\": \"banana\"}"))
 				} else if strings.Contains(r.URL.RequestURI(), "api-key/") {
-					mustWrite(fmt.Fprint(w, "{\"id\": \"YOQZNKYTUWTQ\", \"root\": true, \"registration_time\": 0}"))
+					mustWrite(fmt.Fprint(w, "{\"id\": \"YOQZNKYTUWTQ\", \"root\": true, \"registration_time\": 0, \"nickname\": \"banana\"}"))
 				} else if strings.Contains(r.URL.RequestURI(), "api-key") {
-					mustWrite(fmt.Fprint(w, "[{\"id\": \"YOQZNKYTUWTQ\", \"root\": true, \"registration_time\": 0}]"))
+					mustWrite(fmt.Fprint(w, "[{\"id\": \"YOQZNKYTUWTQ\", \"root\": true, \"registration_time\": 0, \"nickname\": \"banana\"}]"))
 				} else if strings.Contains(r.URL.RequestURI(), "test-dc-error") {
 					w.WriteHeader(400)
 					mustWrite(fmt.Fprint(w, "{\"status\": 400, \"ok\": false, \"response\": \"banana\"}"))
@@ -123,6 +123,8 @@ func setUp(injectedClient *clientMock) (*httptest.Server, *Client) {
 				if strings.Contains(r.URL.RequestURI(), "contract") {
 					mustWrite(fmt.Fprint(w, "{\"success\": {\"dcrn\": \"SmartContract::L1::AtRest\", \"version\": \"1\", \"txn_type\": \"banana\", \"id\": \"banana-id\", \"status\": {}, \"image\": \"dragonchain/banana:1.0.0-dev\", \"cmd\": \"go\", \"args\": [\"run\"], \"execution_order\": \"serial\"}}"))
 				} else if strings.Contains(r.URL.RequestURI(), "transaction-type") {
+					mustWrite(fmt.Fprint(w, "{\"success\": true}"))
+				} else if strings.Contains(r.URL.RequestURI(), "api-key") {
 					mustWrite(fmt.Fprint(w, "{\"success\": true}"))
 				}
 			} else if r.Method == "DELETE" {
@@ -316,11 +318,11 @@ func TestGetSmartContractError(t *testing.T) {
 func TestCreateSmartContract(t *testing.T) {
 	_, client := setUp(nil)
 	contract := &ContractConfiguration{
-		TransactionType:           "banana",
-		ExecutionOrder:            "serial",
-		Image:                     "dragonchain/banana:1.0.0-dev",
-		Cmd:                       "go",
-		Args:                      []string{"run"},
+		TransactionType: "banana",
+		ExecutionOrder:  "serial",
+		Image:           "dragonchain/banana:1.0.0-dev",
+		Cmd:             "go",
+		Args:            []string{"run"},
 		ScheduleIntervalInSeconds: 59,
 		RegistryCredentials:       "bananaauth",
 	}
@@ -345,11 +347,11 @@ func TestCreateSmartContractRequestFails(t *testing.T) {
 	fakeHTTPClient := &clientMock{}
 	_, client := setUp(fakeHTTPClient)
 	contract := &ContractConfiguration{
-		TransactionType:           "banana",
-		ExecutionOrder:            "serial",
-		Image:                     "dragonchain/banana:1.0.0-dev",
-		Cmd:                       "go",
-		Args:                      []string{"run"},
+		TransactionType: "banana",
+		ExecutionOrder:  "serial",
+		Image:           "dragonchain/banana:1.0.0-dev",
+		Cmd:             "go",
+		Args:            []string{"run"},
 		ScheduleIntervalInSeconds: 59,
 		RegistryCredentials:       "bananaauth",
 	}
@@ -361,11 +363,11 @@ func TestCreateSmartContractRequestFails(t *testing.T) {
 func TestUpdateSmartContract(t *testing.T) {
 	_, client := setUp(nil)
 	contract := &ContractConfiguration{
-		TransactionType:           "banana2",
-		ExecutionOrder:            "serial",
-		Image:                     "dragonchain/banana:2.0.0-dev",
-		Cmd:                       "go",
-		Args:                      []string{"run"},
+		TransactionType: "banana2",
+		ExecutionOrder:  "serial",
+		Image:           "dragonchain/banana:2.0.0-dev",
+		Cmd:             "go",
+		Args:            []string{"run"},
 		ScheduleIntervalInSeconds: 59,
 		RegistryCredentials:       "bananaauth",
 	}
@@ -391,11 +393,11 @@ func TestUpdateSmartContractRequestFails(t *testing.T) {
 	fakeHTTPClient := &clientMock{}
 	_, client := setUp(fakeHTTPClient)
 	contract := &ContractConfiguration{
-		TransactionType:           "banana2",
-		ExecutionOrder:            "serial",
-		Image:                     "dragonchain/banana:2.0.0-dev",
-		Cmd:                       "go",
-		Args:                      []string{"run"},
+		TransactionType: "banana2",
+		ExecutionOrder:  "serial",
+		Image:           "dragonchain/banana:2.0.0-dev",
+		Cmd:             "go",
+		Args:            []string{"run"},
 		ScheduleIntervalInSeconds: 59,
 		RegistryCredentials:       "bananaauth",
 	}
@@ -931,10 +933,11 @@ func TestGetAPIKey(t *testing.T) {
 	_, client := setUp(nil)
 	resp, err := client.GetAPIKey("banana")
 	assert.NilError(t, err, "GetAPIKey should not return an error")
-	expected := map[string]interface{}{
-		"id":                "YOQZNKYTUWTQ",
-		"root":              true,
-		"registration_time": float64(0),
+	expected := APIKey{
+		ID:   "YOQZNKYTUWTQ",
+		Root: true,
+		RegistrationTimestamp: 0,
+		Nickname:              "banana",
 	}
 	assert.DeepEqual(t, resp.Response, expected)
 }
@@ -952,12 +955,13 @@ func TestListAPIKeys(t *testing.T) {
 	resp, err := client.ListAPIKeys()
 	assert.NilError(t, err, "ListAPIKeys should not return an error")
 	keys := resp.Response.(map[string]interface{})["keys"]
-	expected := map[string]interface{}{
-		"id":                "YOQZNKYTUWTQ",
-		"root":              true,
-		"registration_time": float64(0),
+	expected := APIKey{
+		RegistrationTimestamp: 0,
+		Nickname:              "banana",
+		Root:                  true,
+		ID:                    "YOQZNKYTUWTQ",
 	}
-	assert.DeepEqual(t, keys.([]map[string]interface{})[0], expected)
+	assert.DeepEqual(t, keys.([]APIKey)[0], expected)
 }
 
 func TestListAPIKeysFails(t *testing.T) {
@@ -970,11 +974,12 @@ func TestListAPIKeysFails(t *testing.T) {
 
 func TestCreateAPIKey(t *testing.T) {
 	_, client := setUp(nil)
-	resp, err := client.CreateAPIKey()
-	expected := map[string]interface{}{
-		"key":               "N4UuMzqFRt183ajXjR8P7goKNBqwRZ7ILKHUIcfNquu",
-		"id":                "VIUBMEGJKVRY",
-		"registration_time": float64(1560362013),
+	apiKeyConfig := &APIKeyConfiguration{}
+	resp, err := client.CreateAPIKey(apiKeyConfig)
+	expected := APIKey{
+		Key: "N4UuMzqFRt183ajXjR8P7goKNBqwRZ7ILKHUIcfNquu",
+		ID:  "VIUBMEGJKVRY",
+		RegistrationTimestamp: 1560362013,
 	}
 	assert.NilError(t, err, "CreateAPIKey should not return an error")
 	assert.DeepEqual(t, resp.Response, expected)
@@ -982,8 +987,9 @@ func TestCreateAPIKey(t *testing.T) {
 
 func TestCreateAPIKeyFails(t *testing.T) {
 	fakeHTTPClient := &clientMock{}
+	apiKeyConfig := &APIKeyConfiguration{}
 	_, client := setUp(fakeHTTPClient)
-	resp, err := client.CreateAPIKey()
+	resp, err := client.CreateAPIKey(apiKeyConfig)
 	assert.Error(t, err, "this is a test error in Client.Post")
 	assert.Assert(t, resp == nil)
 }
@@ -1002,6 +1008,28 @@ func TestDeleteAPIKeyFails(t *testing.T) {
 	fakeHTTPClient := &clientMock{}
 	_, client := setUp(fakeHTTPClient)
 	resp, err := client.DeleteAPIKey("banana")
+	assert.Error(t, err, "this is a test error in Client.Do")
+	assert.Assert(t, resp == nil)
+}
+
+func TestUpdateAPIKey(t *testing.T) {
+	_, client := setUp(nil)
+	apiKeyConfig := &APIKeyConfiguration{
+		Nickname: "nickname",
+	}
+	resp, err := client.UpdateAPIKey("myKey", apiKeyConfig)
+	expected := map[string]bool{
+		"success": true,
+	}
+	assert.NilError(t, err, "UpdateAPIKey should not return an error")
+	assert.DeepEqual(t, resp.Response, expected)
+}
+
+func TestUpdateAPIKeyRequestFails(t *testing.T) {
+	fakeHTTPClient := &clientMock{}
+	apiKeyConfig := &APIKeyConfiguration{}
+	_, client := setUp(fakeHTTPClient)
+	resp, err := client.UpdateAPIKey("keyID", apiKeyConfig)
 	assert.Error(t, err, "this is a test error in Client.Do")
 	assert.Assert(t, resp == nil)
 }

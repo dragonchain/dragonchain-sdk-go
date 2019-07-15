@@ -13,14 +13,14 @@ package dragonchain
 
 // APIKeyConfiguration defines the structure of a request to create/update a transaction type
 type APIKeyConfiguration struct {
-	KeyID    string `json:"keyId"`
-	Nickname string `json:"nickname"`
+	Nickname string `json:"nickname,omitempty"`
 }
 
 // APIKey defines a stored/registered API key
 type APIKey struct {
 	RegistrationTimestamp int    `json:"registration_time"`
-	Nickname              string `json:"nickname"`
+	Nickname              string `json:"nickname,omitempty"`
+	Root                  bool   `json:"root,omitempty"`
+	Key                   string `json:"key,omitempty"`
 	ID                    string `json:"id"`
-	Key                   string `json:"key"`
 }

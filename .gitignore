@@ -13,3 +13,6 @@
 vendor
 
 *.idea/
+
+src/
+pkg/
