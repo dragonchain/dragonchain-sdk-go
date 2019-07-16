@@ -45,6 +45,11 @@ type Transaction struct {
 	Proof   Proof                  `json:"proof"`
 }
 
+// CreateTransactionResponse defines the response from creating a transaction
+type CreateTransactionResponse struct {
+	TransactionID string `json:transaction_id,omitempty`
+}
+
 // GetSmartContractHeap defines the request format for getting a key from a Smart Contract's heap.
 type GetSmartContractHeap struct {
 	SCName string `json:"sc_name"`

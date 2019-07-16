@@ -111,7 +111,7 @@ func (client *Client) GetStatus() (*Response, error) {
 		return nil, err
 	}
 
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -128,7 +128,7 @@ func (client *Client) QuerySmartContracts(query *Query) (*Response, error) {
 	}
 
 	buildQuery(req, query)
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +170,7 @@ func (client *Client) GetSmartContract(smartContractID, transactionType string) 
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +223,7 @@ func (client *Client) UpdateSmartContract(contract *ContractConfiguration) (*Res
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, b)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +238,7 @@ func (client *Client) DeleteContract(smartContractID string) (*Response, error) 
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -255,7 +255,7 @@ func (client *Client) GetTransaction(txnID string) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -277,23 +277,22 @@ func (client *Client) CreateTransaction(txn *CreateTransaction) (_ *Response, er
 	if err != nil {
 		return nil, err
 	}
-
-	resp, err := client.httpClient.Post(uri, "content/json", bytes.NewBuffer(b))
+	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(b))
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	var statusMessage []byte
-	statusMessage, err = ioutil.ReadAll(resp.Body)
+	resp, err := client.performRequest(req, b)
 	if err != nil {
 		return nil, err
 	}
-	response := Response{
-		Response: statusMessage,
-		Status:   resp.StatusCode,
-		OK:       200 <= resp.StatusCode && 300 > resp.StatusCode,
+	fmt.Printf("before typing: %s\n", string(resp.Response.([]byte)))
+	// Handle conversion of Response from an interface{} to Transaction for the user.
+	transaction := make(map[string]CreateTransactionResponse)
+	if err := json.Unmarshal(resp.Response.([]byte), &transaction); err != nil {
+		return nil, err
 	}
-	return &response, err
+	resp.Response = transaction
+	return resp, err
 }
 
 // CreateBulkTransaction sends many transactions to a chain in a single HTTP request.
@@ -338,7 +337,7 @@ func (client *Client) QueryBlocks(query *Query) (*Response, error) {
 		return nil, err
 	}
 	buildQuery(req, query)
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -360,7 +359,7 @@ func (client *Client) GetBlock(blockID string) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -386,7 +385,7 @@ func (client *Client) GetVerifications(blockID string, level int) (*Response, er
 		q.Add("level", string(level))
 		req.URL.RawQuery = q.Encode()
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -418,7 +417,7 @@ func (client *Client) QueryTransactions(query *Query) (*Response, error) {
 	}
 
 	buildQuery(req, query)
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -443,7 +442,7 @@ func (client *Client) GetSmartContractObject(key, smartContractID string) (*Resp
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -471,7 +470,7 @@ func (client *Client) ListSmartContractObjects(folder, smartContractID string) (
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -487,7 +486,7 @@ func (client *Client) GetTransactionType(transactionType string) (*Response, err
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -508,7 +507,7 @@ func (client *Client) ListTransactionTypes() (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -537,7 +536,7 @@ func (client *Client) UpdateTransactionType(transactionType string, customIndexe
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, b)
 	if err != nil {
 		return nil, err
 	}
@@ -592,7 +591,7 @@ func (client *Client) DeleteTransactionType(transactionType string) (*Response, 
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -614,7 +613,7 @@ func (client *Client) GetPublicBlockchainAddress() (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -716,12 +715,13 @@ func (client *Client) CreateEthereumTransaction(ethTransaction *EthereumTransact
 // GetAPIKey returns an HMAC API key.
 func (client *Client) GetAPIKey(keyID string) (*Response, error) {
 	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, "/api-key", keyID)
+	body := []byte("")
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	req, err := http.NewRequest("GET", uri, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, body)
 	if err != nil {
 		return nil, err
 	}
@@ -741,17 +741,15 @@ func (client *Client) ListAPIKeys() (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
-	var keys []APIKey
-	if err := json.Unmarshal(resp.Response.([]byte), &keys); err != nil {
+	apiKeyList := make(map[string][]APIKey)
+	if err := json.Unmarshal(resp.Response.([]byte), &apiKeyList); err != nil {
 		return nil, err
 	}
-	resp.Response = map[string]interface{}{
-		"keys": keys,
-	}
+	resp.Response = apiKeyList
 	return resp, err
 }
 
@@ -762,26 +760,24 @@ func (client *Client) CreateAPIKey(configuration *APIKeyConfiguration) (*Respons
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.httpClient.Post(uri, "content/json", bytes.NewBuffer(b))
+
+	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(b))
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	var chainResp Response
-	bytes, err := ioutil.ReadAll(resp.Body)
+
+	resp, err := client.performRequest(req, b)
 	if err != nil {
 		return nil, err
 	}
-	var key APIKey
-	if err := json.Unmarshal(bytes, &key); err != nil {
+	fmt.Printf("HERE: %+v\n", string(resp.Response.([]byte)))
+	var apiKey APIKey
+	if err := json.Unmarshal(resp.Response.([]byte), &apiKey); err != nil {
 		return nil, err
 	}
-	chainResp.Response = key
-	chainResp.Status = resp.StatusCode
-	if 200 <= resp.StatusCode && resp.StatusCode < 300 {
-		chainResp.OK = true
-	}
-	return &chainResp, err
+	resp.Response = apiKey
+
+	return resp, err
 }
 
 // UpdateAPIKey to update api key nickname
@@ -797,7 +793,7 @@ func (client *Client) UpdateAPIKey(KeyID string, configuration *APIKeyConfigurat
 		return nil, err
 	}
 
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, b)
 	if err != nil {
 		return nil, err
 	}
@@ -816,7 +812,7 @@ func (client *Client) DeleteAPIKey(keyID string) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -829,7 +825,7 @@ func (client *Client) DeleteAPIKey(keyID string) (*Response, error) {
 }
 
 // setHeaders sets the http headers of a request to the chain with proper authorization.
-func (client *Client) setHeaders(req *http.Request, httpVerb, path, contentType, content string) error {
+func (client *Client) setHeaders(req *http.Request, httpVerb, path, contentType string, content []byte) error {
 	if client.creds == nil {
 		return ErrNoCredentials
 	}
@@ -843,11 +839,12 @@ func (client *Client) setHeaders(req *http.Request, httpVerb, path, contentType,
 	req.Header.Set("Dragonchain", client.creds.GetDragonchainID())
 	req.Header.Set("Timestamp", fmt.Sprintf("%s", now))
 	req.Header.Set("Authorization", client.creds.GetAuthorization(httpVerb, path, now, contentType, content))
+	fmt.Printf("%+v\n", req.Header)
 	return nil
 }
 
-func (client *Client) performRequest(req *http.Request) (*Response, error) {
-	err := client.setHeaders(req, req.Method, req.URL.RequestURI(), "application/json", "")
+func (client *Client) performRequest(req *http.Request, body []byte) (*Response, error) {
+	err := client.setHeaders(req, req.Method, req.URL.RequestURI(), "application/json", body)
 	if err != nil {
 		return nil, err
 	}
