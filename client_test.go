@@ -38,10 +38,8 @@ import (
 func TestMain(t *testing.T) {
 	creds, _ := NewCredentials("23qqLjVBWpgeZHf9gXRCernSDMXk8TbmPR9w2DnqTiijx", "haf4Ku9Pk5AfZSHKI3F5ZSZycrh2RzhgPR1nqw2WLey", "EDGJEFKFBXGK", "")
 	client := NewClient(creds, "https://281bd112-2dda-49f4-97a3-6456c08c5b2e.api.dragonchain.com", nil)
-	apiKey := &APIKeyConfiguration{
-		Nickname: "banana",
-	}
-	resp, _ := client.CreateAPIKey(apiKey)
+
+	resp, _ := client.CreateTransactionType("banana", []CustomIndexStructure{})
 	fmt.Printf("RESPONSE: %+v\n", resp.Response)
 }
 
