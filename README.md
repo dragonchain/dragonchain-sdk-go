@@ -1,5 +1,9 @@
 # Dragonchain Golang SDK
 
+[![Build Status](https://img.shields.io/travis/dragonchain/dragonchain-sdk-go)](https://travis-ci.org/dragonchain/dragonchain-sdk-go)
+[![Test Coverage](https://img.shields.io/codeclimate/coverage/dragonchain/dragonchain-sdk-go)](https://codeclimate.com/github/dragonchain/dragonchain-sdk-go/test_coverage)
+[![License](https://img.shields.io/github/license/dragonchain/dragonchain-sdk-go)](https://github.com/dragonchain/dragonchain-sdk-go/blob/master/LICENSE)
+
 Talk to your dragonchain.
 
 ## Method Quicklinks
