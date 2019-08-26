@@ -1,0 +1,19 @@
+branches:
+  only:
+    - master
+    - production
+language: golang
+go:
+  - 1.x
+before_script:
+  - curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+  - chmod +x ./cc-test-reporter
+  - ./cc-test-reporter before-build
+script:
+  - go test -v
+  - for pkg in $(go list ./... | grep -v vendor); do go test -coverprofile=$(echo $pkg | tr / -).cover $pkg ; done
+  - echo "mode: set" > c.out
+  - grep -h -v "^mode:" ./*.cover >> c.out
+  - rm -f *.cover
+after_script:
+  - ./cc-test-reporter after-build --exit-code $TRAVIS_TEST_RESULT
