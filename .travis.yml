@@ -2,7 +2,7 @@ branches:
   only:
     - master
     - production
-language: golang
+language: go
 go:
   - 1.x
 before_script:
@@ -12,7 +12,7 @@ before_script:
 script:
   - go test -v
   - for pkg in $(go list ./... | grep -v vendor); do go test -coverprofile=$(echo $pkg | tr / -).cover $pkg ; done
-  - echo "mode: set" > c.out
+  - "echo 'mode: set' > c.out"
   - grep -h -v "^mode:" ./*.cover >> c.out
   - rm -f *.cover
 after_script:
