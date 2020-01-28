@@ -6,6 +6,8 @@
 
 Talk to your dragonchain.
 
+⚠️Warning!⚠️ This repository is not currently actively maintained. We will still welcome PRs for updates, but note that parts of this SDK may not be fully working.
+
 ## Method Quicklinks
 
 These docs are auto-generated.
