@@ -11,7 +11,7 @@ type Status struct {
 	IndexingEnabled	bool			`json:indexingEnabled`
 }
 
-type Error struct {
-	Code			int16		`json:code`
-	Message		string	`json:message`
+type ErrorDetails struct {
+	Type		string		`json:type`
+	Details	string		`json:details`
 }

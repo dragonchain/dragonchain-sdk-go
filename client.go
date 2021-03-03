@@ -297,19 +297,11 @@ func (client *Client) CreateTransaction(txn *CreateTransaction) (_ *Response, er
 	}
 	// Handle conversion of Response from an interface{} to Transaction for the user.
 	var transaction CreateTransactionResponse
-	var errorMessage Error
 
-	if !resp.OK {
-		if err := json.Unmarshal(resp.Response.([]byte), &errorMessage); err != nil {
-			return nil, err
-		}
-		resp.Response = errorMessage
-	} else {
-		if err := json.Unmarshal(resp.Response.([]byte), &transaction); err != nil {
-			return nil, err
-		}
-		resp.Response = transaction
+	if err := json.Unmarshal(resp.Response.([]byte), &transaction); err != nil {
+		return nil, err
 	}
+	resp.Response = transaction
 	return resp, err
 }
 

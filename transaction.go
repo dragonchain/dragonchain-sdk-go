@@ -47,13 +47,15 @@ type Transaction struct {
 
 // CreateTransactionResponse defines the response from creating a transaction
 type CreateTransactionResponse struct {
-	TransactionID string `json:"transaction_id,omitempty"`
+	TransactionID string 				`json:"transaction_id,omitempty"`
+	Error					ErrorDetails	`json:"error,omitempty"`
 }
 
 // CreateBulkTransactionResponse defines the response from creating a bulk transaction
 type CreateBulkTransactionResponse struct {
 	Valid   []string      `json:"201,omitempty"`
 	Invalid []interface{} `json:"400,omitempty"`
+	Error		ErrorDetails	`json:"error,omitempty"`
 }
 
 // GetSmartContractHeap defines the request format for getting a key from a Smart Contract's heap.
