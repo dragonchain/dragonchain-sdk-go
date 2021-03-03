@@ -45,6 +45,19 @@ type Transaction struct {
 	Proof   Proof                  `json:"proof"`
 }
 
+// CreateTransactionResponse defines the response from creating a transaction
+type CreateTransactionResponse struct {
+	TransactionID string 				`json:"transaction_id,omitempty"`
+	Error					ErrorDetails	`json:"error,omitempty"`
+}
+
+// CreateBulkTransactionResponse defines the response from creating a bulk transaction
+type CreateBulkTransactionResponse struct {
+	Valid   []string      `json:"201,omitempty"`
+	Invalid []interface{} `json:"400,omitempty"`
+	Error		ErrorDetails	`json:"error,omitempty"`
+}
+
 // GetSmartContractHeap defines the request format for getting a key from a Smart Contract's heap.
 type GetSmartContractHeap struct {
 	SCName string `json:"sc_name"`
@@ -55,8 +68,7 @@ type GetSmartContractHeap struct {
 type TransactionType struct {
 	Version       string                 `json:"version"`
 	Type          string                 `json:"txn_type"`
-	CustomIndexes []CustomIndexStructure `json:"custom_indexes"`
-	IsContract    bool                   `json:"is_contract"`
+	CustomIndexes []CustomIndexStructure `json:"custom_indexes,omitempty"`
 }
 
 // CustomIndexStructure defines the valid format of custom indexes on a transaction type.

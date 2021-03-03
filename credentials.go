@@ -48,7 +48,7 @@ var (
 // Authenticator generates the authentication header for requests to chain.
 type Authenticator interface {
 	GetDragonchainID() string
-	GetAuthorization(httpVerb, path string, timestamp, contentType, content string) string
+	GetAuthorization(httpVerb, path string, timestamp, contentType string, content []byte) string
 }
 
 // Credentials implements the Authenticator interface to generate authentication headers.
@@ -172,7 +172,7 @@ func getAuthKeyID(ID string) (string, error) {
 	return key.AuthKeyID, nil
 }
 
-func (creds *Credentials) hmacMessage(httpVerb, path string, timestamp, contentType, content string) string {
+func (creds *Credentials) hmacMessage(httpVerb, path string, timestamp, contentType string, content []byte) string {
 	h := creds.hashFunc()
 
 	h.Write([]byte(content))
@@ -203,7 +203,7 @@ func (creds *Credentials) GetDragonchainID() string {
 }
 
 // GetAuthorization returns the current chain's authorization as a string.
-func (creds *Credentials) GetAuthorization(httpVerb, path string, timestamp, contentType, content string) string {
+func (creds *Credentials) GetAuthorization(httpVerb, path string, timestamp, contentType string, content []byte) string {
 	msgStr := creds.hmacMessage(httpVerb, path, timestamp, contentType, content)
 	hmacMsg := creds.createHmac(creds.authKey, msgStr)
 	b64hmac := base64.StdEncoding.EncodeToString(hmacMsg)

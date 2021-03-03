@@ -111,10 +111,20 @@ func (client *Client) GetStatus() (*Response, error) {
 		return nil, err
 	}
 
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
+	var raw map[string]interface{}
+	if err := json.Unmarshal(resp.Response.([]byte), &raw); err != nil {
+		return nil, err
+	}
+	statusJSON, err := json.Marshal(raw)
+	var status Status
+	if err := json.Unmarshal(statusJSON, &status); err != nil {
+		return nil, err
+	}
+	resp.Response = status
 	return resp, err
 }
 
@@ -128,7 +138,7 @@ func (client *Client) QuerySmartContracts(query *Query) (*Response, error) {
 	}
 
 	buildQuery(req, query)
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -170,7 +180,7 @@ func (client *Client) GetSmartContract(smartContractID, transactionType string) 
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -223,7 +233,7 @@ func (client *Client) UpdateSmartContract(contract *ContractConfiguration) (*Res
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, b)
 	if err != nil {
 		return nil, err
 	}
@@ -238,7 +248,7 @@ func (client *Client) DeleteContract(smartContractID string) (*Response, error) 
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -249,13 +259,13 @@ func (client *Client) DeleteContract(smartContractID string) (*Response, error) 
 func (client *Client) GetTransaction(txnID string) (*Response, error) {
 	path := "/transaction"
 	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, txnID)
-	fmt.Println(uri)
+	body := []byte("")
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	req, err := http.NewRequest("GET", uri, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, body)
 	if err != nil {
 		return nil, err
 	}
@@ -277,23 +287,22 @@ func (client *Client) CreateTransaction(txn *CreateTransaction) (_ *Response, er
 	if err != nil {
 		return nil, err
 	}
+	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(b))
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.performRequest(req, b)
+	if err != nil {
+		return nil, err
+	}
+	// Handle conversion of Response from an interface{} to Transaction for the user.
+	var transaction CreateTransactionResponse
 
-	resp, err := client.httpClient.Post(uri, "content/json", bytes.NewBuffer(b))
-	if err != nil {
+	if err := json.Unmarshal(resp.Response.([]byte), &transaction); err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	var statusMessage []byte
-	statusMessage, err = ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-	response := Response{
-		Response: statusMessage,
-		Status:   resp.StatusCode,
-		OK:       200 <= resp.StatusCode && 300 > resp.StatusCode,
-	}
-	return &response, err
+	resp.Response = transaction
+	return resp, err
 }
 
 // CreateBulkTransaction sends many transactions to a chain in a single HTTP request.
@@ -310,35 +319,38 @@ func (client *Client) CreateBulkTransaction(txn []*CreateTransaction) (_ *Respon
 		return nil, err
 	}
 
-	resp, err := client.httpClient.Post(uri, "content/json", bytes.NewBuffer(txnBytes))
+	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(txnBytes))
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	var statusMessage []byte
-	statusMessage, err = ioutil.ReadAll(resp.Body)
+
+	resp, err := client.performRequest(req, txnBytes)
 	if err != nil {
 		return nil, err
 	}
-	response := Response{
-		Response: statusMessage,
-		Status:   resp.StatusCode,
-		OK:       200 <= resp.StatusCode && 300 > resp.StatusCode,
+
+	var response CreateBulkTransactionResponse
+	if err := json.Unmarshal(resp.Response.([]byte), &response); err != nil {
+		return nil, err
 	}
-	return &response, err
+
+	resp.Response = response
+
+	return resp, err
 }
 
 // QueryBlocks gets all blocks matching the given query.
 func (client *Client) QueryBlocks(query *Query) (*Response, error) {
 	path := "/block"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
+	body := []byte("")
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	req, err := http.NewRequest("GET", uri, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
 	buildQuery(req, query)
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, body)
 	if err != nil {
 		return nil, err
 	}
@@ -355,12 +367,13 @@ func (client *Client) QueryBlocks(query *Query) (*Response, error) {
 func (client *Client) GetBlock(blockID string) (*Response, error) {
 	path := "/block"
 	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, blockID)
+	body := []byte("")
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	req, err := http.NewRequest("GET", uri, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, body)
 	if err != nil {
 		return nil, err
 	}
@@ -376,8 +389,9 @@ func (client *Client) GetBlock(blockID string) (*Response, error) {
 func (client *Client) GetVerifications(blockID string, level int) (*Response, error) {
 	path := "/verifications"
 	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, blockID)
+	body := []byte("")
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	req, err := http.NewRequest("GET", uri, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
@@ -386,7 +400,7 @@ func (client *Client) GetVerifications(blockID string, level int) (*Response, er
 		q.Add("level", string(level))
 		req.URL.RawQuery = q.Encode()
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, body)
 	if err != nil {
 		return nil, err
 	}
@@ -411,14 +425,15 @@ func (client *Client) GetVerifications(blockID string, level int) (*Response, er
 func (client *Client) QueryTransactions(query *Query) (*Response, error) {
 	path := "/transaction"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
+	body := []byte("")
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	req, err := http.NewRequest("GET", uri, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
 
 	buildQuery(req, query)
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, body)
 	if err != nil {
 		return nil, err
 	}
@@ -438,12 +453,13 @@ func (client *Client) GetSmartContractObject(key, smartContractID string) (*Resp
 
 	path := "/get"
 	uri := fmt.Sprintf("%s%s/%s/%s", client.apiBaseURL, path, smartContractID, key)
+	body := []byte("")
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	req, err := http.NewRequest("GET", uri, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, body)
 	if err != nil {
 		return nil, err
 	}
@@ -459,6 +475,7 @@ func (client *Client) ListSmartContractObjects(folder, smartContractID string) (
 
 	path := "/list"
 	uri := fmt.Sprintf("%s%s/%s/", client.apiBaseURL, path, smartContractID)
+	body := []byte("")
 
 	if len(folder) > 0 {
 		if strings.HasSuffix(folder, "/") {
@@ -467,11 +484,11 @@ func (client *Client) ListSmartContractObjects(folder, smartContractID string) (
 		uri = fmt.Sprintf("%s%s", uri, folder)
 	}
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	req, err := http.NewRequest("GET", uri, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, body)
 	if err != nil {
 		return nil, err
 	}
@@ -482,12 +499,13 @@ func (client *Client) ListSmartContractObjects(folder, smartContractID string) (
 func (client *Client) GetTransactionType(transactionType string) (*Response, error) {
 	path := "/transaction-type"
 	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, transactionType)
+	body := []byte("")
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	req, err := http.NewRequest("GET", uri, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, body)
 	if err != nil {
 		return nil, err
 	}
@@ -503,12 +521,13 @@ func (client *Client) GetTransactionType(transactionType string) (*Response, err
 func (client *Client) ListTransactionTypes() (*Response, error) {
 	path := "/transaction-types"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
+	body := []byte("")
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	req, err := http.NewRequest("GET", uri, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, body)
 	if err != nil {
 		return nil, err
 	}
@@ -537,7 +556,7 @@ func (client *Client) UpdateTransactionType(transactionType string, customIndexe
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, b)
 	if err != nil {
 		return nil, err
 	}
@@ -553,34 +572,37 @@ func (client *Client) UpdateTransactionType(transactionType string, customIndexe
 func (client *Client) CreateTransactionType(transactionType string, customIndexes []CustomIndexStructure) (_ *Response, err error) {
 	path := "/transaction-type"
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
+
 	var params TransactionType
 	params.Version = "1"
 	params.Type = transactionType
-	params.CustomIndexes = customIndexes
+	if len(customIndexes) > 0 {
+		params.CustomIndexes = customIndexes
+	}
 
 	b, err := json.Marshal(params)
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := client.httpClient.Post(uri, "content/json", bytes.NewBuffer(b))
+	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(b))
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	var chainResp Response
-	respBytes, err := ioutil.ReadAll(resp.Body)
+
+	resp, err := client.performRequest(req, b)
 	if err != nil {
 		return nil, err
 	}
-	if err := json.Unmarshal(respBytes, &chainResp.Response); err != nil {
+
+	var success map[string]bool
+	if err := json.Unmarshal(resp.Response.([]byte), &success); err != nil {
 		return nil, err
 	}
-	chainResp.Status = resp.StatusCode
-	if 200 <= resp.StatusCode && resp.StatusCode < 300 {
-		chainResp.OK = true
-	}
-	return &chainResp, err
+
+	resp.Response = success
+
+	return resp, err
 }
 
 // DeleteTransactionType removes the specified transaction type. It will not affect transactions that have already been processed.
@@ -592,7 +614,7 @@ func (client *Client) DeleteTransactionType(transactionType string) (*Response, 
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -614,7 +636,7 @@ func (client *Client) GetPublicBlockchainAddress() (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -716,16 +738,17 @@ func (client *Client) CreateEthereumTransaction(ethTransaction *EthereumTransact
 // GetAPIKey returns an HMAC API key.
 func (client *Client) GetAPIKey(keyID string) (*Response, error) {
 	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, "/api-key", keyID)
+	body := []byte("")
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	req, err := http.NewRequest("GET", uri, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, body)
 	if err != nil {
 		return nil, err
 	}
-	var key map[string]interface{}
+	var key APIKey
 	if err := json.Unmarshal(resp.Response.([]byte), &key); err != nil {
 		return nil, err
 	}
@@ -736,48 +759,73 @@ func (client *Client) GetAPIKey(keyID string) (*Response, error) {
 // ListAPIKeys for a chain.
 func (client *Client) ListAPIKeys() (*Response, error) {
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, "/api-key")
+	body := []byte("")
 
-	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	req, err := http.NewRequest("GET", uri, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, body)
 	if err != nil {
 		return nil, err
 	}
-	var keys [](map[string]interface{})
-	if err := json.Unmarshal(resp.Response.([]byte), &keys); err != nil {
+	apiKeyList := make(map[string][]APIKey)
+	if err := json.Unmarshal(resp.Response.([]byte), &apiKeyList); err != nil {
 		return nil, err
 	}
-	resp.Response = map[string]interface{}{
-		"keys": keys,
-	}
+	resp.Response = apiKeyList
 	return resp, err
 }
 
 // CreateAPIKey to access chain with.
-func (client *Client) CreateAPIKey() (*Response, error) {
+func (client *Client) CreateAPIKey(configuration *APIKeyConfiguration) (*Response, error) {
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, "/api-key")
-	resp, err := client.httpClient.Post(uri, "content/json", bytes.NewBuffer(nil))
+	b, err := json.Marshal(configuration)
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
-	var chainResp Response
-	bytes, err := ioutil.ReadAll(resp.Body)
+
+	req, err := http.NewRequest("POST", uri, bytes.NewBuffer(b))
 	if err != nil {
 		return nil, err
 	}
-	var key map[string]interface{}
-	if err := json.Unmarshal(bytes, &key); err != nil {
+
+	resp, err := client.performRequest(req, b)
+	if err != nil {
 		return nil, err
 	}
-	chainResp.Response = key
-	chainResp.Status = resp.StatusCode
-	if 200 <= resp.StatusCode && resp.StatusCode < 300 {
-		chainResp.OK = true
+	var apiKey APIKey
+	if err := json.Unmarshal(resp.Response.([]byte), &apiKey); err != nil {
+		return nil, err
 	}
-	return &chainResp, err
+	resp.Response = apiKey
+
+	return resp, err
+}
+
+// UpdateAPIKey to update api key nickname
+func (client *Client) UpdateAPIKey(KeyID string, configuration *APIKeyConfiguration) (*Response, error) {
+	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, "/api-key", KeyID)
+	b, err := json.Marshal(configuration)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PUT", uri, bytes.NewBuffer(b))
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.performRequest(req, b)
+	if err != nil {
+		return nil, err
+	}
+	var success map[string]bool
+	if err := json.Unmarshal(resp.Response.([]byte), &success); err != nil {
+		return nil, err
+	}
+	resp.Response = success
+	return resp, err
 }
 
 // DeleteAPIKey from chain.
@@ -787,7 +835,7 @@ func (client *Client) DeleteAPIKey(keyID string) (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, []byte(""))
 	if err != nil {
 		return nil, err
 	}
@@ -800,7 +848,7 @@ func (client *Client) DeleteAPIKey(keyID string) (*Response, error) {
 }
 
 // setHeaders sets the http headers of a request to the chain with proper authorization.
-func (client *Client) setHeaders(req *http.Request, httpVerb, path, contentType, content string) error {
+func (client *Client) setHeaders(req *http.Request, httpVerb, path, contentType string, content []byte) error {
 	if client.creds == nil {
 		return ErrNoCredentials
 	}
@@ -817,8 +865,8 @@ func (client *Client) setHeaders(req *http.Request, httpVerb, path, contentType,
 	return nil
 }
 
-func (client *Client) performRequest(req *http.Request) (*Response, error) {
-	err := client.setHeaders(req, req.Method, req.URL.RequestURI(), "application/json", "")
+func (client *Client) performRequest(req *http.Request, body []byte) (*Response, error) {
+	err := client.setHeaders(req, req.Method, req.URL.RequestURI(), "application/json", body)
 	if err != nil {
 		return nil, err
 	}
