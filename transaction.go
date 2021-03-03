@@ -47,7 +47,7 @@ type Transaction struct {
 
 // CreateTransactionResponse defines the response from creating a transaction
 type CreateTransactionResponse struct {
-	TransactionID string `json:"transaction_id"`
+	TransactionID string `json:"transaction_id,omitempty"`
 }
 
 // CreateBulkTransactionResponse defines the response from creating a bulk transaction
