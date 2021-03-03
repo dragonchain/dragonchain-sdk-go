@@ -115,6 +115,16 @@ func (client *Client) GetStatus() (*Response, error) {
 	if err != nil {
 		return nil, err
 	}
+	var raw map[string]interface{}
+	if err := json.Unmarshal(resp.Response.([]byte), &raw); err != nil {
+		return nil, err
+	}
+	statusJSON, err := json.Marshal(raw)
+	var status Status
+	if err := json.Unmarshal(statusJSON, &status); err != nil {
+		return nil, err
+	}
+	resp.Response = status
 	return resp, err
 }
 
