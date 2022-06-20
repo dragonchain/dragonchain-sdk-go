@@ -166,7 +166,7 @@ func TestDCError(t *testing.T) {
 	_, client := setUp(nil)
 	uri := fmt.Sprintf("%s%s", client.apiBaseURL, "/test-dc-error")
 	req, _ := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
-	resp, err := client.performRequest(req)
+	resp, err := client.performRequest(req, "")
 	assert.NilError(t, err, "errors from the dragonchain should not cause exceptions")
 	assert.Equal(t, string(resp.Response.([]byte)), "{\"status\": 400, \"ok\": false, \"response\": \"banana\"}")
 }
