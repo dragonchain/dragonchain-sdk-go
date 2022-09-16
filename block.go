@@ -15,13 +15,13 @@ package dragonchain
 
 // Block defines the structure of a finalized block.
 type Block struct {
-	Version       string `json:"version"`
-	DCRN          string `json:"dcrn"`
-	Header        BlockHeader
-	Proof         BlockProof
+	Version       string           `json:"version"`
+	DCRN          string           `json:"dcrn"`
+	Header        BlockHeader      `json:"header"`
+	Proof         BlockProof       `json:"proof"`
 	Transactions  []Transaction    `json:"transactions,omitempty"`   // L1 only
 	Validation    L1Verification   `json:"validation,omitempty"`     // L2 only
-	L2Validations []L2Verification `json:"l2-validations,omitempty"` // L3 only
+	L2Validations L2Verification   `json:"l2-validations,omitempty"` // L3 only
 	L3Validations []L3Verification `json:"l3-validations,omitempty"` // L4 only
 	L4Blocks      []string         `json:"l4-blocks,omitempty"`      // L5 only
 }
@@ -47,7 +47,7 @@ type BlockProof struct {
 	Proof  string `json:"proof,omitempty"`
 	Nonce  int    `json:"nonce,omitempty"` // Used for PoW chains.
 	// L5 only proofs
-	BlockLastSentAt string   `json:"block_last_sent_at,omitempty"`
+	BlockLastSentAt int64    `json:"block_last_sent_at,omitempty"`
 	TxnHash         []string `json:"transaction_hash,omitempty"`
 	Network         string   `json:"network,omitempty"`
 }
