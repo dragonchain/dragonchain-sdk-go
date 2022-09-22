@@ -589,6 +589,87 @@ func (client *Client) DeleteTransactionType(transactionType string) (*Response, 
 	return resp, err
 }
 
+// ListFactors lists out all registered factors for a chain.
+func (client *Client) ListFactors() (*Response, error) {
+	path := "/factor"
+	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
+
+	req, err := http.NewRequest("GET", uri, bytes.NewBuffer([]byte("")))
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.performRequest(req, "")
+	if err != nil {
+		return nil, err
+	}
+
+	var factors map[string][]*Factor
+	if err := json.Unmarshal(resp.Response.([]byte), &factors); err != nil {
+		return nil, err
+	}
+	resp.Response = factors
+	return resp, err
+}
+
+// CreateFactor creates a new factor.
+func (client *Client) CreateFactor(factor string) (_ *Response, err error) {
+	path := "/factor"
+	uri := fmt.Sprintf("%s%s", client.apiBaseURL, path)
+	var params Factor
+	params.Version = "1"
+	params.Factor = factor
+
+	b, err := json.Marshal(params)
+	if err != nil {
+		return nil, err
+	}
+
+	resp, err := client.httpClient.Post(uri, "content/json", bytes.NewBuffer(b))
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	var chainResp Response
+	respBytes, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+	if err := json.Unmarshal(respBytes, &chainResp.Response); err != nil {
+		return nil, err
+	}
+	chainResp.Status = resp.StatusCode
+	if 200 <= resp.StatusCode && resp.StatusCode < 300 {
+		chainResp.OK = true
+	}
+	return &chainResp, err
+}
+
+// DeleteFactor removes the specified factor.
+func (client *Client) DeleteFactor(id string) (*Response, error) {
+	path := "/factor"
+	uri := fmt.Sprintf("%s%s/%s", client.apiBaseURL, path, id)
+
+	req, err := http.NewRequest("DELETE", uri, bytes.NewBuffer([]byte("")))
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.performRequest(req, "")
+	if err != nil {
+		return nil, err
+	}
+
+	fmt.Println(string(resp.Response.([]byte)))
+
+	var success map[string]bool
+	if err := json.Unmarshal(resp.Response.([]byte), &success); err != nil {
+		return nil, err
+	}
+	resp.Response = success
+	return resp, err
+}
+
 // GetPublicBlockchainAddress returns a dictionary of this chain's interchain addresses.
 // This method is only supported on L1 and L5 chains.
 func (client *Client) GetPublicBlockchainAddress() (*Response, error) {
